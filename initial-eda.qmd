@@ -134,3 +134,29 @@ df %>%
 
 - A right skewed
 - D left skewed
+
+
+# Checking Multicolinearity
+
+## x3 & x4
+```{r}
+df %>%
+  ggplot(aes(x = x3, y = x4, color = x8)) +
+  geom_point()
+```
+
+## x4 & x5
+```{r}
+df %>%
+  ggplot(aes(x = x4, y = x5, color = x8)) +
+  geom_point()
+```
+
+## x6 & x7
+```{r}
+df %>%
+  ggplot(aes(x = x6, y = x7, color = x8)) +
+  geom_point()
+```
+
+- Wacky $cos(x)$ function here
