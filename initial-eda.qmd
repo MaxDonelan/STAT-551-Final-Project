@@ -1,0 +1,136 @@
+---
+title: "Initial Exploratory Data Analysis for STAT 551 Final Project"
+author: "Kyle Maher"
+date: today
+format:
+  html:
+    self-contained: true
+# documentclass: article
+execute:
+  warning: false
+  message: false
+---
+
+# Setup
+```{r}
+library(corrplot)
+library(dplyr)
+library(ggplot2)
+```
+
+# Data
+```{r}
+data <- read.csv("FP_Data.csv")
+df <- as.data.frame(data)
+```
+
+# EDA
+```{r}
+names(df)
+```
+
+## Correlations
+```{r}
+corrplot(cor(select(df, -x8)))
+```
+
+## X1
+```{r}
+df %>%
+  ggplot(aes(x = x1, y = y, color = x8)) +
+  geom_point()
+```
+
+Pretty much random noise.
+
+## X2
+```{r}
+df %>%
+  ggplot(aes(x = x2, y = y, color = x8)) +
+  geom_point()
+```
+
+Pretty much random noise.
+
+## X3
+```{r}
+df %>%
+  ggplot(aes(x = x3, y = y, color = x8)) +
+  geom_point()
+```
+
+Slight positive correlation.
+
+## X4
+```{r}
+df %>%
+  ggplot(aes(x = x4, y = y, color = x8)) +
+  geom_point()
+```
+
+Strong positive correlation.
+
+## X5
+```{r}
+df %>%
+  ggplot(aes(x = x5, y = y, color = x8)) +
+  geom_point()
+```
+
+Strong negative correlation.
+
+## X6
+```{r}
+df %>%
+  ggplot(aes(x = x6, y = y, color = x8)) +
+  geom_point()
+```
+
+Slight positive correlation.
+
+## X7
+```{r}
+df %>%
+  ggplot(aes(x = x7, y = y, color = x8)) +
+  geom_point()
+```
+
+Pretty much random noise.
+
+## X8
+```{r}
+df %>%
+  ggplot(aes(x = x8, y = y, fill = x8)) +
+  geom_boxplot() +
+  theme(
+    legend.position = "none"
+  )
+```
+
+As the classification increments (A-D) y tends to decrease.
+
+- Outlier in A at 100
+- Outlier in D at 0
+
+## y
+```{r}
+df %>%
+  ggplot(aes(x = y)) +
+  geom_histogram(bins = 15, aes(y = after_stat(density))) +
+  stat_function(
+    fun = dnorm,
+    args = list(mean = mean(df$y), sd = sd(df$y)),
+    color = "red",
+    linewidth = 1
+  )
+``` 
+
+```{r}
+df %>%
+  ggplot(aes(x = y, fill = x8)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(~x8)
+```
+
+- A right skewed
+- D left skewed
