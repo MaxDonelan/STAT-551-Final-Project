@@ -9,6 +9,8 @@ format:
 execute:
   warning: false
   message: false
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Setup
@@ -165,3 +167,11 @@ df %>%
 ```
 
 - Wacky $cos(x)$ function here
+
+# Baseline Model
+```{r}
+baseline_model <- lm(y ~ ., data = df)
+summary(baseline_model)
+```
+
+- R-squared of 0.6672, Adj. R-squared of 0.6496
