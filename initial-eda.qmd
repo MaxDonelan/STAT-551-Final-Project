@@ -175,3 +175,38 @@ summary(baseline_model)
 ```
 
 - R-squared of 0.6672, Adj. R-squared of 0.6496
+
+```{r}
+smaller_lm <- lm(y ~ x4 + x8 + x7, data = df)
+summary(smaller_lm)
+```
+
+- We can get R-squared of 0.6489 with just three predictors
+
+## PCA
+
+```{r}
+df_onehot <- df |> mutate(xA = ifelse(x8 == "A", 1, 0),
+                          xB = ifelse(x8 == "B", 1, 0),
+                          xC = ifelse(x8 == "C", 1, 0),
+                          xD = ifelse(x8 == "D", 1, 0)) |> select(-x8)
+df_onehot_no_response <- df_onehot |> select(-y)
+
+pca_results <- prcomp(df_onehot_no_response, scale = TRUE)
+# biplot(pca_results, scale = 0)
+
+summary(lm(df$y ~ pca_results$x[, c(1, 2, 7, 9, 11)]))
+```
+
+- R-squared of 0.6538 with five predictors
+
+```{r}
+library(pls)
+
+pcr_model <- pcr(y ~ ., data = df_onehot, validation = "CV")
+summary(pcr_model)
+
+summary(lm(y ~ ., data = df_onehot))
+```
+
+- PCR with all components slightly beats standard linear regression (0.58 accuracy difference)
