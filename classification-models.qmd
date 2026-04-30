@@ -1,0 +1,265 @@
+---
+title: "Classification Models for STAT 551 Final Project"
+author: "Max Donelan & Kyle Maher"
+date: today
+format:
+  html:
+    self-contained: true
+# documentclass: article
+execute:
+  warning: false
+  message: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Setup
+```{r}
+library(dplyr)
+library(ggplot2)
+library(class)  # knn
+set.seed(2800)
+```
+
+# Data
+```{r}
+data <- read.csv("FP_Data.csv")
+df <- as.data.frame(data)
+df <- df %>%
+  mutate(
+    y_bin = ifelse(y >= 70, 1, 0),
+    x8 = as.factor(x8)
+  ) %>%
+  select(-y)
+```
+
+```{r}
+index <- sample(1:nrow(df), .8 * nrow(df))
+train_df <- df[index, ]
+test_df <- df[-index, ]
+```
+
+# Baseline Logistic 
+
+```{r}
+baseline_logistic <- glm(y_bin ~ ., data = train_df, family = "binomial")
+pred <- predict(baseline_logistic, newdata = test_df, type = "response")
+pred_class <- ifelse(pred >= .5, 1, 0)
+mean(pred_class == test_df$y_bin)
+table(pred_class, test_df$y_bin)
+```
+
+# KNN
+
+```{r}
+df_knn <- df %>%
+  mutate(
+    x1 = scale(x1),
+    x2 = scale(x2),
+    x3 = scale(x3),
+    x4 = scale(x4),
+    x5 = scale(x5),
+    x6 = scale(x6),
+    x7 = scale(x7),
+    xA = ifelse(x8 == "A", 1, 0),
+    xB = ifelse(x8 == "B", 1, 0),
+    xC = ifelse(x8 == "C", 1, 0),
+    xD = ifelse(x8 == "D", 1, 0)
+  ) %>%
+  select(-x8)
+
+index <- sample(1:nrow(df_knn), .8 * nrow(df_knn))
+train_df <- df_knn[index, ]
+test_df <- df_knn[-index, ]
+
+k_vals <- seq(1, 21, by = 2)
+k_accuracy <- data.frame(
+  k = k_vals,
+  accuracy = NA
+)
+
+for (k in k_vals) {
+  pred <- knn(
+    select(train_df, -y_bin), 
+    select(test_df, -y_bin), 
+    as.factor(train_df$y_bin), 
+    k = k
+  )
+  k_accuracy[k_accuracy$k == k, "accuracy"] <- mean(pred == test_df$y_bin)
+}
+
+best_k <- k_accuracy$k[which.max(k_accuracy$accuracy)]
+pred <- knn(
+  select(train_df, -y_bin), 
+  select(test_df, -y_bin), 
+  as.factor(train_df$y_bin), 
+  k = best_k
+)
+mean(pred == test_df$y_bin)
+table(pred, test_df$y_bin)
+```
+
+
+# K-Fold Validation
+
+## Setup
+```{r}
+k <- 10
+# Stratifiy by x8 group
+df <- df %>%
+  group_by(x8) %>%
+  mutate(fold = sample(rep(1:k, length.out = n()))) %>%
+  ungroup()
+
+model_names <- c("BaselineLogistic", "SmallLogistic", "KNN")
+model_count <- length(model_names)
+cv_stats <- data.frame(
+  fold = rep(1:k, model_count),
+  model = rep(model_names, each = k),
+  accuracy = NA,
+  fpr = NA,
+  fnr = NA
+)
+# Accuracy
+accuracy <- function(actual, predicted) {
+  return(mean(actual == predicted))
+}
+
+# False Positive Rate
+fpr <- function(actual, predicted) {
+  return(sum(predicted == 1 & actual == 0) / sum(actual == 0))
+}
+
+# False Negative Rate
+fnr <- function(actual, predicted) {
+  return(sum(predicted == 0 & actual == 1) / sum(actual == 1))
+}
+```
+
+## Running the Cross Validation
+```{r}
+for (i in 1:k) {
+  train_df <- filter(df, fold != i) %>%
+    select(-fold)
+  test_df <- filter(df, fold == i) %>%
+    select(-fold)
+  
+  # Baseline Logistic
+  baseline_logistic <- glm(y_bin ~ ., data = train_df, family = "binomial")
+  pred_prob <- predict(baseline_logistic, newdata = test_df, type = "response")
+  pred <- ifelse(pred_prob >= .5, 1, 0)
+  cv_stats[cv_stats$model == "BaselineLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "BaselineLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "BaselineLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # Small Logistic
+  small_logistic <- glm(y_bin ~ x4 + x8 + x7, data = train_df, family = "binomial")
+  pred_prob <- predict(small_logistic, newdata = test_df, type = "response")
+  pred <- ifelse(pred_prob >= .5, 1, 0)
+  cv_stats[cv_stats$model == "SmallLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "SmallLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "SmallLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # KNN
+  train_df_onehot <- train_df %>% 
+    mutate(
+      x1 = scale(x1),
+      x2 = scale(x2),
+      x3 = scale(x3),
+      x4 = scale(x4),
+      x5 = scale(x5),
+      x6 = scale(x6),
+      x7 = scale(x7),
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  test_df_onehot <- test_df  %>% 
+    mutate(
+      x1 = scale(x1),
+      x2 = scale(x2),
+      x3 = scale(x3),
+      x4 = scale(x4),
+      x5 = scale(x5),
+      x6 = scale(x6),
+      x7 = scale(x7),
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+
+  k_vals <- seq(1, 21, by = 2)
+  k_accuracy <- data.frame(k = k_vals, accuracy = NA)
+
+  for (k in k_vals) {
+    pred <- knn(
+      select(train_df_onehot, -y_bin), 
+      select(test_df_onehot, -y_bin), 
+      as.factor(train_df_onehot$y_bin), 
+      k = k
+    )
+    k_accuracy[k_accuracy$k == k, "accuracy"] <- mean(pred == test_df_onehot$y_bin)
+  }
+
+  best_k <- k_accuracy$k[which.max(k_accuracy$accuracy)]
+  pred <- knn(
+    select(train_df_onehot, -y_bin), 
+    select(test_df_onehot, -y_bin), 
+    as.factor(train_df_onehot$y_bin), 
+    k = best_k
+  )
+
+  cv_stats[cv_stats$model == "KNN", "accuracy"][i] <- accuracy(pred, test_df_onehot$y_bin)
+  cv_stats[cv_stats$model == "KNN", "fpr"][i] <- fpr(pred, test_df_onehot$y_bin)
+  cv_stats[cv_stats$model == "KNN", "fnr"][i] <- fnr(pred, test_df_onehot$y_bin)
+
+}
+```
+
+## Plotting the Cross Validation Metrics
+
+```{r}
+cv_stats %>%
+  ggplot(aes(x = model, y = accuracy, fill = model)) +
+  geom_boxplot(alpha = .8) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Model",
+    y = "Accuracy",
+    title = "Accuracy by Model"
+  )
+```
+
+```{r}
+cv_stats %>%
+  ggplot(aes(x = model, y = fpr, fill = model)) +
+  geom_boxplot(alpha = .8) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Model",
+    y = "False Positive Rate",
+    title = "False Positive Rate by Model"
+  )
+```
+
+```{r}
+cv_stats %>%
+  ggplot(aes(x = model, y = fnr, fill = model)) +
+  geom_boxplot(alpha = .8) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Model",
+    y = "False Negative Rate",
+    title = "False Negative Rate by Model"
+  )
+```
