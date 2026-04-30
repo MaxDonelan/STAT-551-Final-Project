@@ -1,0 +1,177 @@
+---
+title: "Regression Models for STAT 551 Final Project"
+author: "Max Donelan & Kyle Maher"
+date: today
+format:
+  html:
+    self-contained: true
+# documentclass: article
+execute:
+  warning: false
+  message: false
+editor_options: 
+  chunk_output_type: console
+---
+
+# Setup
+```{r}
+library(corrplot)
+library(dplyr)
+library(ggplot2)
+library(pls)
+set.seed(28)
+```
+
+# Data
+```{r}
+data <- read.csv("FP_Data.csv")
+df <- as.data.frame(data)
+```
+
+# Baseline Model
+```{r}
+baseline_model <- lm(y ~ ., data = df)
+summary(baseline_model)
+```
+
+- R-squared of 0.6672, Adj. R-squared of 0.6496
+
+```{r}
+smaller_lm <- lm(y ~ x4 + x8 + x7, data = df)
+summary(smaller_lm)
+```
+
+- We can get R-squared of 0.6489 with just three predictors
+
+## PCA
+
+```{r}
+df_onehot <- df %>% 
+  mutate(
+    xA = ifelse(x8 == "A", 1, 0),
+    xB = ifelse(x8 == "B", 1, 0),
+    xC = ifelse(x8 == "C", 1, 0),
+    xD = ifelse(x8 == "D", 1, 0)
+    ) %>% 
+  select(-x8)
+
+df_onehot_no_response <- df_onehot %>% 
+  select(-y)
+
+pca_results <- prcomp(df_onehot_no_response, scale = TRUE)
+# biplot(pca_results, scale = 0)
+
+summary(lm(df$y ~ pca_results$x[, c(1, 2, 7, 9, 11)]))
+```
+
+- R-squared of 0.6538 with five predictors
+
+```{r}
+pcr_model <- pcr(y ~ ., data = df_onehot, validation = "CV")
+summary(pcr_model)
+
+summary(lm(y ~ ., data = df_onehot))
+```
+
+- PCR with all components slightly beats standard linear regression (0.58 accuracy difference)
+
+# K-Fold Validation
+
+## Setup
+```{r}
+k <- 10
+# Stratifiy by x8 group
+df <- df %>%
+  group_by(x8) %>%
+  mutate(fold = sample(rep(1:k, length.out = n()))) %>%
+  ungroup()
+
+model_names <- c("BaselineLM", "SmallLM", "PCR")
+model_count <- length(model_names)
+cv_stats <- data.frame(
+  fold = rep(1:k, model_count),
+  model = rep(model_names, each = k),
+  rmse = NA
+)
+# Root Mean Squared Error
+rmse <- function(actual, predicted) {
+  return(sqrt(mean((actual - predicted)^2)))
+}
+# Mean Absolute Error
+mae <- function(actual, predicted) {
+  return(mean(abs(actual - predicted)))
+}
+```
+
+## Running the Cross Validation
+```{r}
+for (i in 1:k) {
+  train_df <- filter(df, fold != i)
+  test_df <- filter(df, fold == i)
+  
+  # Baseline LM
+  baseline_lm <- lm(y ~ ., data = train_df)
+  pred <- predict(baseline_lm, newdata = test_df)
+  cv_stats[cv_stats$model == "BaselineLM", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "BaselineLM", "mae"][i] <- mae(test_df$y, pred)
+
+  # Small LM
+  small_lm <- lm(y ~ x4 + x8 + x7, data = train_df)
+  pred <- predict(small_lm, newdata = test_df)
+  cv_stats[cv_stats$model == "SmallLM", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "SmallLM", "mae"][i] <- mae(test_df$y, pred)
+
+  # PCR
+  train_df_onehot <- train_df %>% 
+    mutate(
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  test_df_onehot <- test_df  %>% 
+    mutate(
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  pcr_model <- pcr(y ~ ., data = train_df_onehot, validation = "CV")
+  num_components <- selectNcomp(pcr_model, method = "onesigma")
+  pred <- predict(pcr_model, newdata = test_df_onehot)[, , num_components]
+  cv_stats[cv_stats$model == "PCR", "rmse"][i] <- rmse(test_df_onehot$y, pred)
+  cv_stats[cv_stats$model == "PCR", "mae"][i] <- mae(test_df_onehot$y, pred)
+}
+```
+
+## Plotting the Cross Validation Metrics
+
+```{r}
+cv_stats %>%
+  ggplot(aes(x = model, y = rmse, fill = model)) +
+  geom_boxplot(alpha = .8) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Model",
+    y = "RMSE",
+    title = "Root Mean Squared Error by Model"
+  )
+```
+
+```{r}
+cv_stats %>%
+  ggplot(aes(x = model, y = mae, fill = model)) +
+  geom_boxplot(alpha = .8) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    x = "Model",
+    y = "MAE",
+    title = "Root Mean Squared Error by Model"
+  )
+```
