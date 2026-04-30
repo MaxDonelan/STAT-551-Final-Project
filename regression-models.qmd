@@ -91,7 +91,8 @@ model_count <- length(model_names)
 cv_stats <- data.frame(
   fold = rep(1:k, model_count),
   model = rep(model_names, each = k),
-  rmse = NA
+  rmse = NA,
+  mae = NA
 )
 # Root Mean Squared Error
 rmse <- function(actual, predicted) {
@@ -106,8 +107,10 @@ mae <- function(actual, predicted) {
 ## Running the Cross Validation
 ```{r}
 for (i in 1:k) {
-  train_df <- filter(df, fold != i)
-  test_df <- filter(df, fold == i)
+  train_df <- filter(df, fold != i) %>%
+    select(-fold)
+  test_df <- filter(df, fold == i) %>%
+    select(-fold)
   
   # Baseline LM
   baseline_lm <- lm(y ~ ., data = train_df)
