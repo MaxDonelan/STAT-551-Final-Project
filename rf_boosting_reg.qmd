@@ -1,7 +1,6 @@
 ---
 title: "random_forest and boosting"
 format: pdf
-editor: visual
 editor_options: 
   chunk_output_type: console
 ---
@@ -14,7 +13,6 @@ library(randomForest)
 library(gbm)
 library(caret)
 ```
-
 
 ## Data Setup
 
@@ -69,7 +67,6 @@ importance(rf.df)
 varImpPlot(rf.df)
 ```
 
-
 ## Random Forest Categorical
 
 ```{r}
@@ -87,7 +84,6 @@ yhat.rf.bin <- if_else(yhat.rf.bin >= 0.5, 1 ,0)
 confusionMatrix(as.factor(yhat.rf.bin), as.factor(bin.test))
 
 ```
-
 
 ## Boosting Numerical
 
@@ -147,10 +143,3 @@ yhat.boost.bin <- predict(boost.df.bin, newdata = df_cat_test, n.trees = 5000)
 yhat.boost.bin <- if_else(yhat.boost.bin >= .5, 1, 0)
 confusionMatrix(as.factor(yhat.boost.bin), as.factor(bin.test))
 ```
-
-
-
-
-
-
-
