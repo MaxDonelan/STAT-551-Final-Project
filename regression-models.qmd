@@ -15,10 +15,14 @@ editor_options:
 
 # Setup
 ```{r}
-library(corrplot)
-library(dplyr)
-library(ggplot2)
-library(pls)
+library(dplyr)  # Data Manipulation
+library(ggplot2)  # Plotting
+library(pls)  # PCR
+library(randomForest)  # Random Forest
+# library(GGally)
+# library(gbm)
+# library(caret)
+
 set.seed(28)
 ```
 
@@ -43,7 +47,7 @@ summary(smaller_lm)
 
 - We can get R-squared of 0.6489 with just three predictors
 
-## PCA
+# PCA
 
 ```{r}
 df_onehot <- df %>% 
@@ -75,6 +79,49 @@ summary(lm(y ~ ., data = df_onehot))
 
 - PCR with all components slightly beats standard linear regression (0.58 accuracy difference)
 
+# Random Forest
+<!-- From Jack with slight changes
+- renamed df_test to test_df and accessed y when required instead
+- removed "." from variable names -->
+```{r}
+train_df <- df[1:160,]
+test_df <- df[-(1:160),]
+```
+
+```{r}
+bag_fp <- randomForest(y ~ ., data = train_df, mtry = 8, importance = TRUE)
+bag_fp
+```
+
+```{r}
+yhat_bag <- predict(bag_fp, newdata = test_df)
+plot(yhat_bag, test_df$y)
+abline(0,1)
+mean((yhat_bag - test_df$y)^2)
+```
+
+```{r}
+bag_fp_2 <- randomForest(y ~ ., data = train_df, mtry = 8, ntree = 25)
+yhat_bag_2 <- predict(bag_fp_2, newdata = test_df)
+plot(yhat_bag_2, test_df$y)
+abline(0,1)
+mean((yhat_bag_2 - test_df$y)^2)
+```
+
+```{r}
+rf_df <- randomForest(y ~ ., data = train_df, mtry = 6, importance = TRUE)
+rf_df
+yhat_rf <- predict(rf_df, newdata = test_df)
+plot(yhat_rf, test_df$y)
+abline(0,1)
+mean((yhat_rf - test_df$y)^2)
+```
+
+```{r}
+importance(rf_df)
+varImpPlot(rf_df)
+```
+
 # K-Fold Validation
 
 ## Setup
@@ -86,7 +133,7 @@ df <- df %>%
   mutate(fold = sample(rep(1:k, length.out = n()))) %>%
   ungroup()
 
-model_names <- c("BaselineLM", "SmallLM", "PCR")
+model_names <- c("BaselineLM", "SmallLM", "PCR", "RandomForest")
 model_count <- length(model_names)
 cv_stats <- data.frame(
   fold = rep(1:k, model_count),
@@ -146,6 +193,12 @@ for (i in 1:k) {
   pred <- predict(pcr_model, newdata = test_df_onehot)[, , num_components]
   cv_stats[cv_stats$model == "PCR", "rmse"][i] <- rmse(test_df_onehot$y, pred)
   cv_stats[cv_stats$model == "PCR", "mae"][i] <- mae(test_df_onehot$y, pred)
+
+  # Random Forest
+  rf_model <- randomForest(y ~ ., data = train_df, mtry = 6, importance = TRUE)
+  pred <- predict(rf_model, newdata = test_df)
+  cv_stats[cv_stats$model == "RandomForest", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "RandomForest", "mae"][i] <- mae(test_df$y, pred)
 }
 ```
 
