@@ -19,8 +19,9 @@ library(dplyr)  # Data Manipulation
 library(ggplot2)  # Plotting
 library(pls)  # PCR
 library(randomForest)  # Random Forest
+library(gbm) # Boosted Trees
+
 # library(GGally)
-# library(gbm)
 # library(caret)
 
 set.seed(28)
@@ -30,6 +31,8 @@ set.seed(28)
 ```{r}
 data <- read.csv("FP_Data.csv")
 df <- as.data.frame(data)
+df <- df %>%
+  mutate(x8 = as.factor(x8))
 ```
 
 # Baseline Model
@@ -122,6 +125,49 @@ importance(rf_df)
 varImpPlot(rf_df)
 ```
 
+# Boosted Trees
+<!-- From Jack with slight changes
+- removed "." from variable names -->
+```{r}
+train_df <- df[1:160,]
+test_df <- df[-(1:160),]
+```
+
+```{r}
+boost_df <- gbm(y ~ ., data = train_df,
+                distribution = "gaussian", n.trees = 5000,
+                interaction.depth = 4)
+summary(boost_df)
+```
+
+```{r}
+plot(boost_df, i = "x4")
+plot(boost_df, i = "x7")
+```
+
+```{r}
+yhat_boost <- predict(boost_df, newdata = test_df, n.trees = 5000)
+mean((yhat_boost - test_df$y)^2)
+```
+
+```{r}
+boost_df_2 <- gbm(y ~ ., data = train_df,
+                distribution = "gaussian", n.trees = 5000,
+                interaction.depth = 4, shrinkage = 0.2, verbose = F)
+summary(boost_df_2)
+```
+
+```{r}
+plot(boost_df_2, i = "x7")
+plot(boost_df_2, i = "x5")
+plot(boost_df_2, i = "x4")
+```
+
+```{r}
+yhat_boost_2 <- predict(boost_df, newdata = test_df, n.trees = 5000)
+mean((yhat_boost_2 - test_df$y)^2)
+```
+
 # K-Fold Validation
 
 ## Setup
@@ -131,9 +177,10 @@ k <- 10
 df <- df %>%
   group_by(x8) %>%
   mutate(fold = sample(rep(1:k, length.out = n()))) %>%
-  ungroup()
+  ungroup() %>%
+  mutate(x8 = as.factor(x8))  # For gbm() (BostedTrees)
 
-model_names <- c("BaselineLM", "SmallLM", "PCR", "RandomForest")
+model_names <- c("BaselineLM", "SmallLM", "PCR", "RandomForest", "BoostedTrees")
 model_count <- length(model_names)
 cv_stats <- data.frame(
   fold = rep(1:k, model_count),
@@ -199,6 +246,18 @@ for (i in 1:k) {
   pred <- predict(rf_model, newdata = test_df)
   cv_stats[cv_stats$model == "RandomForest", "rmse"][i] <- rmse(test_df$y, pred)
   cv_stats[cv_stats$model == "RandomForest", "mae"][i] <- mae(test_df$y, pred)
+
+  # Boosted Trees
+  bt_model <- gbm(
+    y ~ .,
+    data = train_df,
+    distribution = "gaussian", 
+    n.trees = 5000,
+    interaction.depth = 4
+  )
+  pred <- predict(bt_model, newdata = test_df, n.trees = 5000)
+  cv_stats[cv_stats$model == "BoostedTrees", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "BoostedTrees", "mae"][i] <- mae(test_df$y, pred)
 }
 ```
 
@@ -228,6 +287,6 @@ cv_stats %>%
   labs(
     x = "Model",
     y = "MAE",
-    title = "Root Mean Squared Error by Model"
+    title = "Mean Absolute Error by Model"
   )
 ```
