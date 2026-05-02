@@ -180,6 +180,9 @@ df <- df %>%
   ungroup() %>%
   mutate(x8 = as.factor(x8))  # For gbm() (BostedTrees)
 
+# Output Cross Validation Split for Python Models
+write.csv(df, "10-fold-cv.csv", row.names = FALSE)
+
 model_names <- c("BaselineLM", "SmallLM", "PCR", "RandomForest", "BoostedTrees")
 model_count <- length(model_names)
 cv_stats <- data.frame(
@@ -259,6 +262,12 @@ for (i in 1:k) {
   cv_stats[cv_stats$model == "BoostedTrees", "rmse"][i] <- rmse(test_df$y, pred)
   cv_stats[cv_stats$model == "BoostedTrees", "mae"][i] <- mae(test_df$y, pred)
 }
+```
+
+## Add Python Neural Network Results
+```{r}
+nn_cv <- read.csv("reg_nn_cv_results.csv")
+cv_stats <- bind_rows(cv_stats, nn_cv)
 ```
 
 ## Plotting the Cross Validation Metrics
