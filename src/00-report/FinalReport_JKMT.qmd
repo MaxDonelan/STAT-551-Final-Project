@@ -6,7 +6,13 @@ date-format: "[Spring] YYYY"
 format:
   pdf:
     self-contained: true
-documentclass: scrreprt
+    documentclass: scrreprt
+    mainfont: "Times New Roman"
+    fontsize: 12pt
+    linestretch: 1.5
+    geometry:
+      - margin=1in
+    pdf-engine: xelatex
 execute:
   warning: false
   message: false
@@ -34,4 +40,485 @@ Appendix. A brief explanation of the programs used. Supplemental or extended res
 
 The given FP data contains $200$ observations of eight predictors labeld $x1$ through $x8$, and the resulting response parameter $y$. Additional consideration was given to predicting $y\_bin$ which is $1$ if $y$ is greater than or equal to $70$ and $0$ otherwise. $x1$ through $x7$ are continuous while $x8$ is categorical with four groups $A, B, C,$ and $D$. No context surrounding the predictors or response parameters was given. This report is segmented into initial Exploratory Data Analysis, followed by the Regression Models, then the Classification Models, and concludes with some overall observations. All written code can be found in the appendix.
 
+<!-- SETUP: All Libraries -->
+```{r}
+library(dplyr)         # Data Manipulation
+library(ggplot2)       # Plotting
+library(pls)           # PCR
+library(corrplot)      # Correlations Plot (function in pls masks)
+library(randomForest)  # Random Forest
+library(gbm)           # Boosted Trees
+library(class)         # knn
+library(glmnet)        # Regularized Logistic
+library(mgcv)          # Logistic GAM
+
+set.seed(2800)
+```
+
 # Exploratory Data Analysis
+
+```{r}
+data <- read.csv("data/FP_Data.csv")
+df <- as.data.frame(data)
+df <- df %>%
+  mutate(x8 = as.factor(x8))
+```
+
+## Continuous $y$
+
+### Correlations
+```{r}
+#| fig-height: 4
+#| fig-width: 4
+#| fig-cap: "Correlations of Continuous Parameters"
+
+corrplot(cor(select(df, -x8)))
+```
+
+### Pairplot
+```{r}
+#| fig-height: 6
+#| fig-width: 6
+#| fig-cap: "Scatterplots of Continuous Parameters"
+
+pairs(select(df, -x8))
+```
+
+### y
+```{r}
+#| fig-height: 4
+#| fig-width: 6
+#| fig-cap: "Histogram of y"
+
+df %>%
+  ggplot(aes(x = y)) +
+  geom_histogram(bins = 15, aes(y = after_stat(density))) +
+  stat_function(
+    fun = dnorm,
+    args = list(mean = mean(df$y), sd = sd(df$y)),
+    color = "red",
+    linewidth = 1
+  )
+``` 
+
+```{r}
+#| fig-height: 4
+#| fig-width: 6
+#| fig-cap: "Histograms of y by x8"
+
+df %>%
+  ggplot(aes(x = y, fill = x8)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(~x8)
+```
+
+- A right skewed
+- D left skewed
+
+## Dichotomized $y$
+
+
+# Regression Models
+
+<!-- ## Setup -->
+```{r}
+set.seed(2800)
+k <- 10
+# Stratifiy by x8 group
+df <- df %>%
+  group_by(x8) %>%
+  mutate(fold = sample(rep(1:k, length.out = n()))) %>%
+  ungroup() %>%
+  mutate(x8 = as.factor(x8))  # For gbm() (BostedTrees)
+
+# Output Cross Validation Split for Python Models
+write.csv(df, "src/04-cv/10-fold-cv.csv", row.names = FALSE)
+
+model_names <- c("BaselineLM", "SmallLM", "PCR", "RandomForest", "BoostedTrees")
+model_count <- length(model_names)
+cv_stats <- data.frame(
+  fold = rep(1:k, model_count),
+  model = rep(model_names, each = k),
+  rmse = NA,
+  mae = NA
+)
+# Root Mean Squared Error
+rmse <- function(actual, predicted) {
+  return(sqrt(mean((actual - predicted)^2)))
+}
+# Mean Absolute Error
+mae <- function(actual, predicted) {
+  return(mean(abs(actual - predicted)))
+}
+```
+
+<!-- ## Running the Cross Validation -->
+```{r}
+for (i in 1:k) {
+  train_df <- filter(df, fold != i) %>%
+    select(-fold)
+  test_df <- filter(df, fold == i) %>%
+    select(-fold)
+  
+  # Baseline LM
+  baseline_lm <- lm(y ~ ., data = train_df)
+  pred <- predict(baseline_lm, newdata = test_df)
+  cv_stats[cv_stats$model == "BaselineLM", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "BaselineLM", "mae"][i] <- mae(test_df$y, pred)
+
+  # Small LM
+  small_lm <- lm(y ~ x4 + x8 + x7, data = train_df)
+  pred <- predict(small_lm, newdata = test_df)
+  cv_stats[cv_stats$model == "SmallLM", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "SmallLM", "mae"][i] <- mae(test_df$y, pred)
+
+  # PCR
+  train_df_onehot <- train_df %>% 
+    mutate(
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  test_df_onehot <- test_df  %>% 
+    mutate(
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  pcr_model <- pcr(y ~ ., data = train_df_onehot, validation = "CV")
+  num_components <- selectNcomp(pcr_model, method = "onesigma")
+  pred <- predict(pcr_model, newdata = test_df_onehot)[, , num_components]
+  cv_stats[cv_stats$model == "PCR", "rmse"][i] <- rmse(test_df_onehot$y, pred)
+  cv_stats[cv_stats$model == "PCR", "mae"][i] <- mae(test_df_onehot$y, pred)
+
+  # Random Forest
+  rf_model <- randomForest(y ~ ., data = train_df, mtry = 6, importance = TRUE)
+  pred <- predict(rf_model, newdata = test_df)
+  cv_stats[cv_stats$model == "RandomForest", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "RandomForest", "mae"][i] <- mae(test_df$y, pred)
+
+  # Boosted Trees
+  bt_model <- gbm(
+    y ~ .,
+    data = train_df,
+    distribution = "gaussian", 
+    n.trees = 5000,
+    interaction.depth = 4
+  )
+  pred <- predict(bt_model, newdata = test_df, n.trees = 5000)
+  cv_stats[cv_stats$model == "BoostedTrees", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "BoostedTrees", "mae"][i] <- mae(test_df$y, pred)
+}
+```
+
+<!-- ## Add Python Neural Network Results -->
+```{r}
+nn_cv <- read.csv("src/04-cv/reg_nn_cv_results.csv")
+cv_stats <- bind_rows(cv_stats, nn_cv)
+```
+
+## Plotting the 10-Fold Cross Validation Metrics
+
+```{r}
+#| fig-cap: "RMSE by Model for Each Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = rmse, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "RMSE",
+    title = "Root Mean Squared Error by Model"
+  )
+```
+
+```{r}
+#| fig-cap: "RMSE by Model and by Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = rmse, color = as.factor(fold), group = fold)) +
+  geom_line(linewidth = 1) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "RMSE",
+    title = "RMSE by Model and by Fold"
+  )
+```
+
+```{r}
+#| fig-cap: "MAE by Model for Each Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = mae, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "MAE",
+    title = "Mean Absolute Error by Model"
+  )
+```
+
+
+# Classification Models
+
+```{r}
+data <- read.csv("data/FP_Data.csv")
+df <- as.data.frame(data)
+df <- df %>%
+  mutate(
+    y_bin = ifelse(y >= 70, 1, 0),
+    x8 = as.factor(x8)
+  ) %>%
+  select(-y)
+```
+
+<!-- ## Setup -->
+```{r}
+set.seed(2800)
+k <- 10
+# Stratifiy by x8 group
+df <- df %>%
+  group_by(x8) %>%
+  mutate(fold = sample(rep(1:k, length.out = n()))) %>%
+  ungroup()
+
+model_names <- c(
+  "BaselineLogistic", 
+  "SmallLogistic", 
+  "RegularizedLogisitc", 
+  "LogisticGAM", 
+  "KNN"
+)
+
+model_count <- length(model_names)
+cv_stats <- data.frame(
+  fold = rep(1:k, model_count),
+  model = rep(model_names, each = k),
+  accuracy = NA,
+  fpr = NA,
+  fnr = NA
+)
+# Accuracy
+accuracy <- function(actual, predicted) {
+  return(mean(actual == predicted))
+}
+
+# False Positive Rate
+fpr <- function(actual, predicted) {
+  return(sum(predicted == 1 & actual == 0) / sum(actual == 0))
+}
+
+# False Negative Rate
+fnr <- function(actual, predicted) {
+  return(sum(predicted == 0 & actual == 1) / sum(actual == 1))
+}
+```
+
+<!-- ## Running the Cross Validation -->
+```{r}
+for (i in 1:k) {
+  train_df <- filter(df, fold != i) %>%
+    select(-fold)
+  test_df <- filter(df, fold == i) %>%
+    select(-fold)
+  
+  # Baseline Logistic
+  baseline_logistic <- glm(y_bin ~ ., data = train_df, family = "binomial")
+  pred_prob <- predict(baseline_logistic, newdata = test_df, type = "response")
+  pred <- ifelse(pred_prob >= .5, 1, 0)
+  cv_stats[cv_stats$model == "BaselineLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "BaselineLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "BaselineLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # Small Logistic
+  small_logistic <- glm(y_bin ~ x1 + x3 + x5 + x7 + x8, data = train_df, family = "binomial")
+  pred_prob <- predict(small_logistic, newdata = test_df, type = "response")
+  pred <- ifelse(pred_prob >= .5, 1, 0)
+  cv_stats[cv_stats$model == "SmallLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "SmallLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "SmallLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # Regularized Logistic
+  train_mat <- as.matrix(select(train_df, -y_bin))
+  test_mat <- as.matrix(select(test_df, -y_bin))
+  cv <- cv.glmnet(train_mat, train_df$y_bin, family = "binomial", alpha = 1)
+  lambda <- cv$lambda.min
+  reg_logistic <- glmnet(train_mat, train_df$y_bin, family = "binomial", alpha = 1, lambda = lambda)
+  predict_probs <- predict(reg_logistic, newx = test_mat, s = lambda, type = "response")
+  pred <- ifelse(predict_probs >=.5, 1, 0)
+  cv_stats[cv_stats$model == "RegularizedLogisitc", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "RegularizedLogisitc", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "RegularizedLogisitc", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # Logistic GAM
+  logistic_gam <- gam(y_bin ~ s(x5) + s(x7), family = "binomial", data = train_df, method = "REML")
+  predict_probs <- predict(logistic_gam, newdata = test_df, type = "response")
+  pred <- ifelse(predict_probs >=.5, 1, 0)
+  cv_stats[cv_stats$model == "LogisticGAM", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogisticGAM", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogisticGAM", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # KNN
+  train_df_onehot <- train_df %>% 
+    mutate(
+      x1 = scale(x1),
+      x2 = scale(x2),
+      x3 = scale(x3),
+      x4 = scale(x4),
+      x5 = scale(x5),
+      x6 = scale(x6),
+      x7 = scale(x7),
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  test_df_onehot <- test_df  %>% 
+    mutate(
+      x1 = scale(x1),
+      x2 = scale(x2),
+      x3 = scale(x3),
+      x4 = scale(x4),
+      x5 = scale(x5),
+      x6 = scale(x6),
+      x7 = scale(x7),
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+
+  k_vals <- seq(1, 21, by = 2)
+  k_accuracy <- data.frame(k = k_vals, accuracy = NA)
+
+  for (k in k_vals) {
+    pred <- knn(
+      select(train_df_onehot, -y_bin), 
+      select(test_df_onehot, -y_bin), 
+      as.factor(train_df_onehot$y_bin), 
+      k = k
+    )
+    k_accuracy[k_accuracy$k == k, "accuracy"] <- mean(pred == test_df_onehot$y_bin)
+  }
+
+  best_k <- k_accuracy$k[which.max(k_accuracy$accuracy)]
+  pred <- knn(
+    select(train_df_onehot, -y_bin), 
+    select(test_df_onehot, -y_bin), 
+    as.factor(train_df_onehot$y_bin), 
+    k = best_k
+  )
+
+  cv_stats[cv_stats$model == "KNN", "accuracy"][i] <- accuracy(pred, test_df_onehot$y_bin)
+  cv_stats[cv_stats$model == "KNN", "fpr"][i] <- fpr(pred, test_df_onehot$y_bin)
+  cv_stats[cv_stats$model == "KNN", "fnr"][i] <- fnr(pred, test_df_onehot$y_bin)
+
+}
+```
+
+<!-- ## Adding the Python Neural Network Results -->
+
+```{r}
+nn_cv <- read.csv("src/04-cv/class_nn_cv_results.csv")
+cv_stats <- bind_rows(cv_stats, nn_cv)
+```
+
+## Plotting the 10-Fold Cross Validation Metrics
+
+```{r}
+#| fig-cap: "Accuracy by Model for Each Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = accuracy, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "Accuracy",
+    title = "Accuracy by Model"
+  )
+```
+
+```{r}
+#| fig-cap: "False Positive Rate by Model for Each Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = fpr, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "False Positive Rate",
+    title = "False Positive Rate by Model"
+  )
+```
+
+```{r}
+#| fig-cap: "False Negative Rate by Model for Each Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = fnr, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "False Negative Rate",
+    title = "False Negative Rate by Model"
+  )
+```
+
+```{r}
+#| fig-cap: "Accuracy by Model and by Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = accuracy, color = as.factor(fold), group = fold)) +
+  geom_line(linewidth = 1) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "Accuracy",
+    title = "Accuracy by Model and by Fold"
+  )
+```
