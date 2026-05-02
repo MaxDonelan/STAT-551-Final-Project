@@ -1,0 +1,37 @@
+---
+title: "Final Report for STAT 451/551"
+author: "Jack Barney, Kyle Maher, Max Donelan, & Tate Wietfeld"
+date: 2026-05-05
+date-format: "[Spring] YYYY"
+format:
+  pdf:
+    self-contained: true
+documentclass: scrreprt
+execute:
+  warning: false
+  message: false
+  echo: false
+editor_options: 
+  chunk_output_type: console
+---
+
+<!-- 
+Frontpage. Title, Contributors; Semester & Year. 
+
+Introduction: A brief intro, restate the general objective, nature of variables in the dataset. At the end of this section, include a sentence how the rest of your report is organized.  
+
+Descriptive analyses: Includes graphical and numerical descriptive statistics, preliminary discussions regarding patterns in the data.
+Fitting and evaluating various predictive models. Continuous (y) and dichotomized (ybin) cases.   
+
+Concluding remarks. 100 - 120 words. 
+
+Sources. Textbook, research papers, internet, etc. Use APA style.
+
+Appendix. A brief explanation of the programs used. Supplemental or extended results as needed.  
+-->
+
+# Introduction
+
+The given FP data contains $200$ observations of eight predictors labeld $x1$ through $x8$, and the resulting response parameter $y$. Additional consideration was given to predicting $y\_bin$ which is $1$ if $y$ is greater than or equal to $70$ and $0$ otherwise. $x1$ through $x7$ are continuous while $x8$ is categorical with four groups $A, B, C,$ and $D$. No context surrounding the predictors or response parameters was given. This report is segmented into initial Exploratory Data Analysis, followed by the Regression Models, then the Classification Models, and concludes with some overall observations. All written code can be found in the appendix.
+
+# Exploratory Data Analysis
