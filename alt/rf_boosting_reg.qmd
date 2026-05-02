@@ -1,0 +1,145 @@
+---
+title: "random_forest and boosting"
+format: pdf
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#Libraries
+library(GGally)
+library(dplyr)
+library(randomForest)
+library(gbm)
+library(caret)
+```
+
+## Data Setup
+
+```{r}
+df <- read.csv("FP_Data.csv")
+df <- df %>% 
+  mutate(across(where(is.character), as.factor))
+train_df <- df[1:160,]
+test_df <- df[-(1:160),]
+```
+
+```{r}
+df %>% 
+  ggpairs()
+```
+
+## Random Forest Numeric
+
+```{r}
+set.seed(28)
+bag.fp <- randomForest(y ~ ., data = train_df, mtry = 8, importance = TRUE)
+bag.fp
+```
+
+```{r}
+yhat.bag <- predict(bag.fp, newdata = test_df)
+df.test <- test_df$y
+plot(yhat.bag, df.test)
+abline(0,1)
+mean((yhat.bag - df.test)^2)
+```
+
+```{r}
+bag.fp.2 <- randomForest(y ~ ., data = train_df, mtry = 8, ntree = 25)
+yhat.bag.2 <- predict(bag.fp.2, newdata = test_df)
+plot(yhat.bag.2, df.test)
+abline(0,1)
+mean((yhat.bag.2 - df.test)^2)
+```
+
+```{r}
+rf.df <- randomForest(y ~ ., data = train_df, mtry = 6, importance = TRUE)
+rf.df
+yhat.rf <- predict(rf.df, newdata = test_df)
+plot(yhat.rf, df.test)
+abline(0,1)
+mean((yhat.rf - df.test)^2)
+```
+
+```{r}
+importance(rf.df)
+varImpPlot(rf.df)
+```
+
+## Random Forest Categorical
+
+```{r}
+df_cat <- df %>% 
+  mutate(ybin = if_else(y >= 70, 1, 0))
+df_cat <- df_cat %>% 
+  select(-y)
+df_cat_train <- df_cat[1:160,]
+df_cat_test <- df_cat[-(1:160),]
+bin.test <- df_cat_test$ybin
+rf.df.bin <- randomForest(ybin ~ ., data = df_cat_train, mtry = 6, importance = TRUE)
+rf.df.bin
+yhat.rf.bin <- predict(rf.df.bin, newdata = df_cat_test)
+yhat.rf.bin <- if_else(yhat.rf.bin >= 0.5, 1 ,0)
+confusionMatrix(as.factor(yhat.rf.bin), as.factor(bin.test))
+
+```
+
+## Boosting Numerical
+
+```{r}
+set.seed(28)
+boost.df <- gbm(y ~ ., data = train_df,
+                distribution = "gaussian", n.trees = 5000,
+                interaction.depth = 4)
+summary(boost.df)
+```
+
+```{r}
+plot(boost.df, i = "x4")
+plot(boost.df, i = "x7")
+```
+
+```{r}
+yhat.boost <- predict(boost.df, newdata = test_df, n.trees = 5000)
+mean((yhat.boost - df.test)^2)
+```
+
+```{r}
+boost.df.2 <- gbm(y ~ ., data = train_df,
+                distribution = "gaussian", n.trees = 5000,
+                interaction.depth = 4, shrinkage = 0.2, verbose = F)
+summary(boost.df.2)
+```
+
+```{r}
+plot(boost.df.2, i = "x7")
+plot(boost.df.2, i = "x5")
+plot(boost.df.2, i = "x4")
+```
+
+```{r}
+yhat.boost.2 <- predict(boost.df, newdata = test_df, n.trees = 5000)
+mean((yhat.boost.2 - df.test)^2)
+```
+
+## Boosting Catergorical
+
+```{r}
+boost.df.bin <- gbm(ybin ~ ., data = df_cat_train,
+                distribution = "bernoulli", n.trees = 5000,
+                interaction.depth = 4, shrinkage = 0.2, verbose = F)
+summary(boost.df.bin)
+```
+
+```{r}
+plot(boost.df.bin, i = "x4")
+plot(boost.df.bin, i = "x7")
+plot(boost.df.bin, i = "x5")
+```
+
+```{r}
+yhat.boost.bin <- predict(boost.df.bin, newdata = df_cat_test, n.trees = 5000)
+yhat.boost.bin <- if_else(yhat.boost.bin >= .5, 1, 0)
+confusionMatrix(as.factor(yhat.boost.bin), as.factor(bin.test))
+```
