@@ -1,0 +1,90 @@
+---
+title: "Initial Classification Models"
+author: "Tate Weitfeld"
+date: today
+format:
+  html:
+    self-contained: true
+documentclass: article
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+FP_Data <- read.csv("data/FP_Data.csv")
+```
+
+Make y dichotomous (ybin)
+```{r}
+FP_di <- FP_Data
+ybin <- ifelse(FP_di$y >=70,1,0)
+FP_di$y <- NULL
+FP_di$ybin <- ybin
+```
+
+
+Standard multiple logistic regression
+```{r}
+mlogr <- glm(ybin ~ x1+x3+x5+x7+x8, family=  binomial, data=FP_di)
+# Dropping x2, x4,and x6 from the model drastically reduces GVIF and adjusted GVIF
+summary(mlogr)
+
+predict_probs <- predict(mlogr, newdata=FP_di, type="response")
+predicted <- ifelse(predict_probs >=.5, 1, 0)
+table(Actual= FP_di$ybin, Predicted = predicted)
+
+accuracy = (154+19)/200
+print(accuracy)
+```
+
+```{r}
+library(car)
+vif(mlogr)
+# Adjusted GVIF column remains below 5, so no multicollinearity issues
+```
+
+
+Regularized Logistic Regression
+```{r, warning=FALSE, message=FALSE}
+library(glmnet)
+
+# Prep data (needs to be a matrix)
+mat <- as.matrix(FP_di[,1:8])
+
+# Get penalty term (lambda) via cross validation
+# Alpha=1 implies Lasso (L1) regularization
+cv <- cv.glmnet(mat, FP_di$ybin, family="binomial", alpha=1)
+plot(cv) # For fun
+
+# Generally the best lambda is the minimum one
+lambda <- cv$lambda.min
+
+# Use said lambda in final model
+reg_mlogr <- glmnet(mat, FP_di$ybin, family="binomial", alpha=1,lambda=lambda)
+
+# Check model accuracy
+predict_probs <- predict(reg_mlogr, newx=mat, s=lambda, type="response")
+predicted <- ifelse(predict_probs >=.5, 1, 0)
+table(Actual= FP_di$ybin, Predicted = predicted)
+
+accuracy = (156+19)/200
+print(accuracy)
+```
+
+
+Logistic GAM
+```{r}
+library(mgcv)
+
+gam_logr <- gam(ybin~s(x5)+s(x7), family="binomial", data=FP_di, method= "REML")
+#summary(gam_logr)
+#vif(gam_logr)
+
+predict_probs <- predict(gam_logr, newdata=FP_di, type="response")
+predicted <- ifelse(predict_probs >=.5, 1, 0)
+table(Actual= FP_di$ybin, Predicted = predicted)
+
+accuracy = (156+20)/200
+print(accuracy)
+```
