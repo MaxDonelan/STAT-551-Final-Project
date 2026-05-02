@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Kyle Maher">
-<meta name="dcterms.date" content="2026-04-29">
+<meta name="dcterms.date" content="2026-05-01">
 
 <title>Initial Exploratory Data Analysis for STAT 551 Final Project</title>
 <style>
@@ -2365,7 +2365,7 @@ window.Quarto = {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">April 29, 2026</p>
+      <p class="date">May 1, 2026</p>
     </div>
   </div>
   
@@ -2388,7 +2388,7 @@ window.Quarto = {
 <section id="data" class="level1">
 <h1>Data</h1>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;FP_Data.csv&quot;</span>)</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">&quot;data/FP_Data.csv&quot;</span>)</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(data)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 </section>
@@ -2732,6 +2732,149 @@ F-statistic: 37.89 on 10 and 189 DF,  p-value: &lt; 2.2e-16</code></pre>
 <ul>
 <li>R-squared of 0.6672, Adj. R-squared of 0.6496</li>
 </ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>smaller_lm <span class="ot">&lt;-</span> <span class="fu">lm</span>(y <span class="sc">~</span> x4 <span class="sc">+</span> x8 <span class="sc">+</span> x7, <span class="at">data =</span> df)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(smaller_lm)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = y ~ x4 + x8 + x7, data = df)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-27.9168  -5.7964  -0.4151   6.0073  20.2643 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  59.3765     1.1408  52.048  &lt; 2e-16 ***
+x4            9.9733     0.6174  16.154  &lt; 2e-16 ***
+x8B          -4.4719     1.7545  -2.549   0.0116 *  
+x8C          -4.4995     1.8967  -2.372   0.0187 *  
+x8D          -9.1000     1.8026  -5.048 1.02e-06 ***
+x7            4.2903     0.4687   9.154  &lt; 2e-16 ***
+---
+Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+
+Residual standard error: 9.334 on 194 degrees of freedom
+Multiple R-squared:  0.6489,    Adjusted R-squared:  0.6398 
+F-statistic:  71.7 on 5 and 194 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<ul>
+<li>We can get R-squared of 0.6489 with just three predictors</li>
+</ul>
+<section id="pca" class="level2">
+<h2 class="anchored" data-anchor-id="pca">PCA</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>df_onehot <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">xA =</span> <span class="fu">ifelse</span>(x8 <span class="sc">==</span> <span class="st">&quot;A&quot;</span>, <span class="dv">1</span>, <span class="dv">0</span>),</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>                          <span class="at">xB =</span> <span class="fu">ifelse</span>(x8 <span class="sc">==</span> <span class="st">&quot;B&quot;</span>, <span class="dv">1</span>, <span class="dv">0</span>),</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>                          <span class="at">xC =</span> <span class="fu">ifelse</span>(x8 <span class="sc">==</span> <span class="st">&quot;C&quot;</span>, <span class="dv">1</span>, <span class="dv">0</span>),</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>                          <span class="at">xD =</span> <span class="fu">ifelse</span>(x8 <span class="sc">==</span> <span class="st">&quot;D&quot;</span>, <span class="dv">1</span>, <span class="dv">0</span>)) <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>x8)</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>df_onehot_no_response <span class="ot">&lt;-</span> df_onehot <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>y)</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>pca_results <span class="ot">&lt;-</span> <span class="fu">prcomp</span>(df_onehot_no_response, <span class="at">scale =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="co"># biplot(pca_results, scale = 0)</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(<span class="fu">lm</span>(df<span class="sc">$</span>y <span class="sc">~</span> pca_results<span class="sc">$</span>x[, <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">7</span>, <span class="dv">9</span>, <span class="dv">11</span>)]))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = df$y ~ pca_results$x[, c(1, 2, 7, 9, 11)])
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-25.1053  -4.7081   0.0972   5.8364  19.9714 
+
+Coefficients:
+                                         Estimate Std. Error t value Pr(&gt;|t|)
+(Intercept)                             5.546e+01  6.567e-01  84.460  &lt; 2e-16
+pca_results$x[, c(1, 2, 7, 9, 11)]PC1  -6.783e+00  4.368e-01 -15.530  &lt; 2e-16
+pca_results$x[, c(1, 2, 7, 9, 11)]PC2  -4.638e+00  5.206e-01  -8.909 3.74e-16
+pca_results$x[, c(1, 2, 7, 9, 11)]PC7  -2.409e+00  6.732e-01  -3.578 0.000438
+pca_results$x[, c(1, 2, 7, 9, 11)]PC9  -5.476e+00  1.123e+00  -4.876 2.25e-06
+pca_results$x[, c(1, 2, 7, 9, 11)]PC11 -8.429e+15  1.262e+15  -6.681 2.45e-10
+                                          
+(Intercept)                            ***
+pca_results$x[, c(1, 2, 7, 9, 11)]PC1  ***
+pca_results$x[, c(1, 2, 7, 9, 11)]PC2  ***
+pca_results$x[, c(1, 2, 7, 9, 11)]PC7  ***
+pca_results$x[, c(1, 2, 7, 9, 11)]PC9  ***
+pca_results$x[, c(1, 2, 7, 9, 11)]PC11 ***
+---
+Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+
+Residual standard error: 9.269 on 194 degrees of freedom
+Multiple R-squared:  0.6538,    Adjusted R-squared:  0.6448 
+F-statistic: 73.26 on 5 and 194 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<ul>
+<li>R-squared of 0.6538 with five predictors</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pls)</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>pcr_model <span class="ot">&lt;-</span> <span class="fu">pcr</span>(y <span class="sc">~</span> ., <span class="at">data =</span> df_onehot, <span class="at">validation =</span> <span class="st">&quot;CV&quot;</span>)</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(pcr_model)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Data:   X dimension: 200 11 
+    Y dimension: 200 1
+Fit method: svdpc
+Number of components considered: 11
+
+VALIDATION: RMSEP
+Cross-validated using 10 random segments.
+       (Intercept)  1 comps  2 comps  3 comps  4 comps  5 comps  6 comps
+CV           15.59    14.90    12.72    10.34    10.16    9.982    9.610
+adjCV        15.59    14.88    12.65    10.33    10.15    9.965    9.586
+       7 comps  8 comps  9 comps  10 comps  11 comps
+CV       9.561    9.557    9.497     9.490    10.111
+adjCV    9.535    9.535    9.469     9.462     9.266
+
+TRAINING: % variance explained
+   1 comps  2 comps  3 comps  4 comps  5 comps  6 comps  7 comps  8 comps
+X    30.42    54.51    74.84    83.87    91.38    94.29    96.57    98.48
+y    10.64    35.37    57.96    59.80    61.39    64.73    65.11    65.25
+   9 comps  10 comps  11 comps
+X    99.86    100.00     100.0
+y    66.55     66.72      67.3</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(<span class="fu">lm</span>(y <span class="sc">~</span> ., <span class="at">data =</span> df_onehot))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = y ~ ., data = df_onehot)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-24.0884  -6.1522  -0.3664   6.7667  21.9874 
+
+Coefficients: (1 not defined because of singularities)
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 49.98426    1.39839  35.744  &lt; 2e-16 ***
+x1           0.04922    0.71265   0.069   0.9450    
+x2          -0.23687    0.37950  -0.624   0.5333    
+x3          -1.14474    1.83708  -0.623   0.5340    
+x4           8.60683    4.04078   2.130   0.0345 *  
+x5          -2.22852    3.30860  -0.674   0.5014    
+x6          -2.06619    1.64944  -1.253   0.2119    
+x7           4.83944    0.60425   8.009 1.15e-13 ***
+xA           9.26075    1.80193   5.139 6.84e-07 ***
+xB           4.62911    1.92434   2.406   0.0171 *  
+xC           4.53117    2.05535   2.205   0.0287 *  
+xD                NA         NA      NA       NA    
+---
+Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+
+Residual standard error: 9.207 on 189 degrees of freedom
+Multiple R-squared:  0.6672,    Adjusted R-squared:  0.6496 
+F-statistic: 37.89 on 10 and 189 DF,  p-value: &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<ul>
+<li>PCR with all components slightly beats standard linear regression (0.58 accuracy difference)</li>
+</ul>
+</section>
 </section>
 
 </main>
