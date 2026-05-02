@@ -22,7 +22,7 @@ library(ggplot2)
 
 # Data
 ```{r}
-data <- read.csv("FP_Data.csv")
+data <- read.csv("data/FP_Data.csv")
 df <- as.data.frame(data)
 ```
 

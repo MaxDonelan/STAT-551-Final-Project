@@ -29,7 +29,7 @@ set.seed(28)
 
 # Data
 ```{r}
-data <- read.csv("FP_Data.csv")
+data <- read.csv("data/FP_Data.csv")
 df <- as.data.frame(data)
 df <- df %>%
   mutate(x8 = as.factor(x8))
@@ -181,7 +181,7 @@ df <- df %>%
   mutate(x8 = as.factor(x8))  # For gbm() (BostedTrees)
 
 # Output Cross Validation Split for Python Models
-write.csv(df, "10-fold-cv.csv", row.names = FALSE)
+write.csv(df, "src/04-cv/10-fold-cv.csv", row.names = FALSE)
 
 model_names <- c("BaselineLM", "SmallLM", "PCR", "RandomForest", "BoostedTrees")
 model_count <- length(model_names)
@@ -266,7 +266,7 @@ for (i in 1:k) {
 
 ## Add Python Neural Network Results
 ```{r}
-nn_cv <- read.csv("reg_nn_cv_results.csv")
+nn_cv <- read.csv("src/04-cv/reg_nn_cv_results.csv")
 cv_stats <- bind_rows(cv_stats, nn_cv)
 ```
 

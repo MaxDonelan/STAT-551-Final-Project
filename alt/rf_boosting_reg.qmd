@@ -17,7 +17,7 @@ library(caret)
 ## Data Setup
 
 ```{r}
-df <- read.csv("FP_Data.csv")
+df <- read.csv("data/FP_Data.csv")
 df <- df %>% 
   mutate(across(where(is.character), as.factor))
 train_df <- df[1:160,]
