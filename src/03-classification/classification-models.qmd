@@ -220,6 +220,13 @@ for (i in 1:k) {
 }
 ```
 
+## Adding the Python Neural Network Results
+
+```{r}
+nn_cv <- read.csv("src/04-cv/class_nn_cv_results.csv")
+cv_stats <- bind_rows(cv_stats, nn_cv)
+```
+
 ## Plotting the Cross Validation Metrics
 
 ```{r}
