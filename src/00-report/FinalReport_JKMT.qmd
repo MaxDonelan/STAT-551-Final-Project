@@ -672,6 +672,8 @@ cv_stats %>%
 \newpage
 # References
 
+Daniel. (2025). Understanding Generalized Additive Models. RPubs. https://rpubs.com/AfroLogicInsect/GAM 
+
 Leung, K. (2025, March 5). Assumptions of logistic regression, clearly explained. Towards Data Science. https://towardsdatascience.com/assumptions-of-logistic-regression-clearly-explained-44d85a22b290/ 
 
-Daniel. (2025). Understanding Generalized Additive Models. RPubs. https://rpubs.com/AfroLogicInsect/GAM 
+Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., ... & Chintala, S. (2019). Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems, 32.
