@@ -64,7 +64,10 @@ set.seed(2800)
 data <- read.csv("data/FP_Data.csv")
 df <- as.data.frame(data)
 df <- df %>%
-  mutate(x8 = as.factor(x8))
+  mutate(
+    y_bin = ifelse(y >= 70, 1, 0),
+    x8 = as.factor(x8)
+  )
 ```
 
 ## Continuous $y$
@@ -87,7 +90,7 @@ corrplot(cor(select(df, -x8)))
 pairs(select(df, -x8))
 ```
 
-### y
+### $y$
 ```{r}
 #| fig-height: 4
 #| fig-width: 6
@@ -120,6 +123,26 @@ df %>%
 
 ## Dichotomized $y$
 
+```{r}
+#| fig-height: 4
+#| fig-width: 6
+#| fig-cap: "Barplot of binary y"
+
+df %>%
+  ggplot(aes(x = y_bin, fill = x8)) +
+  geom_bar() + 
+  facet_wrap(~x8)
+``` 
+
+```{r}
+#| fig-height: 4
+#| fig-width: 6
+#| fig-cap: "Grouped barplot of binary y by x8"
+
+df %>%
+  ggplot(aes(x = y_bin, fill = x8)) +
+  geom_bar(position="dodge")
+```
 
 # Regression Models
 
@@ -128,6 +151,8 @@ df %>%
 set.seed(2800)
 k <- 10
 # Stratifiy by x8 group
+data <- read.csv("data/FP_Data.csv")
+df <- as.data.frame(data)
 df <- df %>%
   group_by(x8) %>%
   mutate(fold = sample(rep(1:k, length.out = n()))) %>%
