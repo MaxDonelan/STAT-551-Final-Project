@@ -1,0 +1,198 @@
+---
+title: "PA_Final_TateWietfeld"
+author: "Tate Wietfeld"
+date: "2026-04-29"
+output: html_document
+---
+
+Import FP data
+
+```{r}
+library(readr)
+FP_Data <- read_csv("C:/Users/wietf/Downloads/FP_Data.csv")
+View(FP_Data)
+```
+
+```{r}
+library(corrplot)
+FP_numeric <- FP_Data
+FP_numeric$x8 <- NULL
+
+corrplot(cor(FP_numeric), method = "shade" )
+```
+
+PART 2
+
+Make y dichotomous
+
+```{r}
+FP_di <- FP_Data
+ybin <- ifelse(FP_di$y >=70,1,0)
+FP_di$y <- NULL
+FP_di$ybin <- ybin
+```
+
+## Checking Assumptions
+
+Checking to see that data points don't cluster within their own groups via plots, then testing the assumption that the predictor variables are linearly related to the log-odds of the outcome
+
+### x1
+
+```{r}
+plot(ybin~x1, data=FP_di)
+
+# Test for linear log odds
+newx1 <- FP_di$x1*log(FP_di$x1)
+test <- glm(ybin ~ x1+newx1, family=  binomial, data=FP_di)
+summary(test)
+# P value for newx1 is >.05, thus the assumption that and x1 has a linear relation to the log-odds of ybin stands.
+```
+
+### x2
+
+```{r}
+plot(ybin~x2, data=FP_di)
+
+# Test for linear log odds
+newx2 <- FP_di$x2*log(FP_di$x2)
+test <- glm(ybin ~ x2+newx2, family=  binomial, data=FP_di)
+summary(test)
+# P value for newx2 is >.05, thus the assumption that and x2 has a linear relation to the log-odds of ybin stands.
+```
+
+### x3
+
+```{r}
+plot(ybin~x3, data=FP_di)
+
+# Test for linear log odds
+newx3 <- FP_di$x3*log(FP_di$x3)
+test <- glm(ybin ~ x3+newx3, family=  binomial, data=FP_di)
+summary(test)
+# P value for newx3 is >.05, thus the assumption that and x3 has a linear relation to the log-odds of ybin stands.
+```
+
+### x4
+
+```{r}
+plot(ybin~x4, data=FP_di)
+
+# Test for linear log odds
+newx4 <- FP_di$x4*log(FP_di$x4)
+test <- glm(ybin ~ x4+newx4, family=  binomial, data=FP_di)
+summary(test)
+# P value for newx4 is >.05, thus the assumption that and x4 has a linear relation to the log-odds of ybin stands.
+```
+
+### x5
+
+```{r}
+plot(ybin~x5, data=FP_di)
+
+# Test for linear log odds
+newx5 <- FP_di$x5*log(FP_di$x5)
+test <- glm(ybin ~ x5+newx5, family=  binomial, data=FP_di)
+summary(test)
+# P value for newx5 is >.05, thus the assumption that and x5 has a linear relation to the log-odds of ybin stands.
+```
+
+### x6
+
+```{r}
+plot(ybin~x6, data=FP_di)
+
+# Test for linear log odds
+newx6 <- FP_di$x6*log(FP_di$x6)
+test <- glm(ybin ~ x6+newx6, family=  binomial, data=FP_di)
+summary(test)
+# P value for newx6 is <.05, thus the assumption that and x6 has a linear relation to the log-odds of ybin is rejected.
+
+# Thus, we should use log(x6) instead of x6 in our models
+```
+
+### x7
+
+```{r}
+plot(ybin~x7, data=FP_di)
+
+# Test for linear log odds
+newx7 <- FP_di$x7*log(FP_di$x7)
+test <- glm(ybin ~ x7+newx7, family=  binomial, data=FP_di)
+summary(test)
+# P value for newx7 is <.05, thus the assumption that and x7 has a linear relation to the log-odds of ybin is rejected.
+
+# We should use log(x7) instead of x7 in our models
+```
+
+### x8
+
+```{r}
+boxplot(ybin~x8, data=FP_di)
+
+# Doesn't need to test for linear log-odds because it's categorical
+```
+
+## Standard multiple logistic regression
+
+```{r}
+mlogr <- glm(ybin~x1+x2+x3+x5+log(x6+3)+log(x7+3)+x8, family=  binomial, data=FP_di)
+# Dropping x4 from the model drastically reduces GVIF and adjusted GVIF
+summary(mlogr)
+
+predict_probs <- predict(mlogr, newdata=FP_di, type="response")
+predicted <- ifelse(predict_probs >=.5, 1, 0)
+table(Actual= FP_di$ybin, Predicted = predicted)
+
+accuracy = (154+21)/200
+print(accuracy)
+```
+
+```{r}
+library(car)
+vif(mlogr)
+# Adjusted GVIF column remains below 5, so no multicollinearity issues
+```
+
+## Regularized Logistic Regression
+
+```{r, warning=FALSE, message=FALSE}
+library(glmnet)
+
+# Prep data (needs to be a matrix)
+mat <- as.matrix(FP_di[,1:8])
+
+# Get penalty term (lambda) via cross validation
+# Alpha=1 implies Lasso (L1) regularization
+cv <- cv.glmnet(mat, FP_di$ybin, family="binomial", alpha=1)
+plot(cv) # For fun
+
+# Generally the best lambda is the minimum one
+lambda <- cv$lambda.min
+
+# Use said lambda in final model
+reg_mlogr <- glmnet(mat, FP_di$ybin, family="binomial", alpha=1,lambda=lambda)
+
+# Check model accuracy
+predict_probs <- predict(reg_mlogr, newx=mat, s=lambda, type="response")
+predicted <- ifelse(predict_probs >=.5, 1, 0)
+table(Actual= FP_di$ybin, Predicted = predicted)
+
+accuracy = (157+19)/200
+print(accuracy)
+```
+
+## Logistic GAM
+
+```{r}
+library(mgcv)
+  
+gam_logr <- gam(ybin~s(x1)+s(x2)+s(x3)+s(x5)+s(log(x6+3))+s(log(x7+3))+x8, family="binomial", data=FP_di)
+summary(gam_logr)
+
+predict_probs <- predict(gam_logr, newdata=FP_di, type="response")
+predicted <- ifelse(predict_probs >=.5, 1, 0)
+table(Actual= FP_di$ybin, Predicted = predicted)
+
+accuracy = (159+32)/200
+print(accuracy)
+```
