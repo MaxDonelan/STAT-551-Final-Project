@@ -146,6 +146,15 @@ df %>%
 
 # Regression Models
 
+## Random Forest Regression
+
+Random forest is an extension and improvement upon bagging by using decorrelation. Bootstrap aggregation or bagging uses a tree based method and bootstrapping by taking repeated samples from the same training set and taking the average of the models, to make a new model that reduces the variance. The difference between bagging and random forest is that random forest uses, m, a random sample of our predictors from our total predictors p. A majority of the time m is found by evaluating the square root of p. Therefore, when there is a split in the tree, the model is not allowed to consider all the predictors. This is important as it allows other predictors to essentially have a chance, as some of the splits will not consider our strongest predictors. At the end of the models’ processes the average of our resulting trees will have less variability and therefore be a more reliable prediction. Random forest is especially helpful when we have many highly correlated predictors.
+
+
+## Boosted Trees Regression
+
+ Boosting builds off the premise of bagging with its own twist. In bagging the model is built on the single training set, on the other hand boosting is built sequentially. This means that if a tree is made, the next tree will be grown or made using the information of the previous tree. Any other tree made after this point will be grown from the information of all the trees before. Thus, boosting is not using bootstrap sampling. This process allows the model to avoid over fitting by learning slowly. Boosting does this by having three tuning parameters the number of trees, a shrinkage parameter, and the number of splits. In general, this model outperforms a random forest model.
+
 <!-- ## Setup -->
 ```{r}
 set.seed(2800)
@@ -417,6 +426,14 @@ Known also as the logistic generalized additive model, is a method for categoriz
 #| fig-pos: "H"
 knitr::include_graphics("src/00-report/figures/FromTate/figureH.png")
 ```
+
+## Random Forest Classification
+
+Random forest can also be used for predicting categorical variables similarly to regression with a slight change. When predicting a categorical variable, we record each class predicted by each tree. After observing our predictions, the class with the majority of predictions from the trees will be our prediction.
+
+## Boosted Trees for Classifiction
+
+For categorical predictions the boosting method is similar but different from regression. This difference stems from the use of binomial deviance rather than least square error like in the regression version. Through this change we can predict for a categorical variable. 
  
 
 ```{r}
@@ -675,5 +692,9 @@ cv_stats %>%
 Daniel. (2025). Understanding Generalized Additive Models. RPubs. https://rpubs.com/AfroLogicInsect/GAM 
 
 Leung, K. (2025, March 5). Assumptions of logistic regression, clearly explained. Towards Data Science. https://towardsdatascience.com/assumptions-of-logistic-regression-clearly-explained-44d85a22b290/ 
+
+Leung, K. (2025, March 5). Assumptions of logistic regression, clearly explained. Towards Data Science. <https://towardsdatascience.com/assumptions-of-logistic-regression-clearly-explained-44d85a22b290/>
+
+Jerome H. Friedman, Robert Tibshirani, and Trevor Hastie. (2009). The Elements of Statistical Learning. <https://hastie.su.domains/ElemStatLearn/>
 
 Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., ... & Chintala, S. (2019). Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems, 32.
