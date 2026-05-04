@@ -170,7 +170,7 @@ df <- df %>%
 
 model_names <- c(
   "BaselineLogistic", 
-  "SmallLogistic", 
+  "LogLogistic", 
   "RegularizedLogisitc", 
   "LogisticGAM", 
   "KNN"
@@ -216,13 +216,17 @@ for (i in 1:k) {
   cv_stats[cv_stats$model == "BaselineLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
   cv_stats[cv_stats$model == "BaselineLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
 
-  # Small Logistic
-  small_logistic <- glm(y_bin ~ x1 + x3 + x5 + x7 + x8, data = train_df, family = "binomial")
-  pred_prob <- predict(small_logistic, newdata = test_df, type = "response")
+  # Log Logistic
+  log_logistic <- glm(
+    y_bin ~ x1 + x2 + x3 + x5 + log(x6 + 3) + log(x7 + 3) + x8, 
+    data = train_df,
+    family = "binomial"
+  )
+  pred_prob <- predict(log_logistic, newdata = test_df, type = "response")
   pred <- ifelse(pred_prob >= .5, 1, 0)
-  cv_stats[cv_stats$model == "SmallLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
-  cv_stats[cv_stats$model == "SmallLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
-  cv_stats[cv_stats$model == "SmallLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
 
   # Regularized Logistic
   train_mat <- as.matrix(select(train_df, -y_bin))
@@ -237,7 +241,12 @@ for (i in 1:k) {
   cv_stats[cv_stats$model == "RegularizedLogisitc", "fnr"][i] <- fnr(pred, test_df$y_bin)
 
   # Logistic GAM
-  logistic_gam <- gam(y_bin ~ s(x5) + s(x7), family = "binomial", data = train_df, method = "REML")
+  logistic_gam <- gam(
+    y_bin ~ s(x1) + s(x2) + s(x3) + s(x5) + s(log(x6 + 3)) + s(log(x7 + 3)) + x8, 
+    family = "binomial", 
+    data = train_df, 
+    method = "REML"
+  )
   predict_probs <- predict(logistic_gam, newdata = test_df, type = "response")
   pred <- ifelse(predict_probs >=.5, 1, 0)
   cv_stats[cv_stats$model == "LogisticGAM", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
