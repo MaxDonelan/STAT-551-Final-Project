@@ -44,6 +44,7 @@ The given FP data contains $200$ observations of eight predictors labeld $x1$ th
 
 <!-- SETUP: All Libraries -->
 ```{r}
+library(knitr)
 library(dplyr)         # Data Manipulation
 library(ggplot2)       # Plotting
 library(pls)           # PCR
@@ -283,6 +284,115 @@ cv_stats %>%
 
 
 # Classification Models
+
+## Standard Binary Logistic Regression
+
+To fit the standard logistic regression, the first step we need to take is to redefine the dependent variable. Previously, y was able to take on any integer value from 0 to 100, but in the case defined by this project, y would need to be reduced to a binary variable depending on its previous larger scale values. This new version of y, ybin, is given a value of 1 if y’s previous value was greater than or equal to 70, or 0 otherwise. With variable ybin defined, our next step is to fit the first version of our standard logistic regression model.
+
+Using the glm function in R, we can fit a standard logistic regression using every predictor variable at our disposal (x1 through x8) in efforts to model ybin. The following @fig-A provides the numerical summary of that model:
+ 
+```{r}
+#| label: fig-A
+#| fig-cap: "Placeholder Caption"
+#| out-width: "80%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureA.png")
+```
+
+Immediately the lack of significant predictors is apparent, with the majority of the independent variables holding p-values greater than 0.05. At this point, we need to check whether we have violated the assumptions of a standard logistic regression. Those assumptions are as follows: The outcome variable is binary, the data points in each group are independent (little to no clustering), the independent variables must be linearly related to the log-odds of the outcome, there must be little to no multicollinearity, no drastic outliers, and finally that we have a large sample size (Leung, 2025). A few of these we can check off quickly: Our outcome variable ybin is binary, it’s defined as described earlier in this section. Next, we can confirm that we have a large sample size because our data has 200 observations, which is generally considered large. 
+
+With that, we can begin to critique the other requirements. Starting with checking for outliers and clustering, we can plot the individual predictor variables against the original y to check for both. We use the original y because Those plots are as follows:
+
+```{r}
+#| label: fig-B
+#| fig-cap: "Placeholder Caption"
+#| out-width: "100%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureB.png")
+```
+
+Seen in @fig-B, none of the values from the predictor variables have extravagant outliers, nor do they cluster dramatically in any scatterplot. At the bottom right of @fig-B we have the plot of ybin vs x8, which is different from the rest because x8 is a categorical variable. There’s no outliers to be seen here either, because values of x8 can only be A, B, C, or D. Thus, we’ve met two more of our assumptions.
+
+The next assumption we need to check is that our independent variables need to be linearly related to the log odds of the outcome. This can be done using the Box-Tidwell test. To do so, we must first define a new variable for each predictor variable (xn) that is equal to $xn*log(xn)$. Then, we define a logistic regression model, modeling yin with xn and $xn*log(xn)$ as the only predictors. When we look at the model’s summary, if the $xn*log(xn)$’s p-value is significant ( < 0.05) , then we cannot assume xn is linearly related to the log odds of the outcome (Leung, 2025). These steps are repeated for each predictor variable, as shown in the below figure. Note that newxn represents the $xn*log(xn)$ value for the nth predictor variable.
+
+```{r}
+#| label: fig-C
+#| fig-cap: "Placeholder Caption"
+#| out-width: "100%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureC.png")
+```
+
+Above in @Fig-C, we notice that for predictors x6 and x7, we have to reject our assumption that they are linearly related to the log-odds of ybin due to their low p-values. This means that for the actual model, we must transform them slightly instead of simply using them as they come from the dataset. In doing so, we are able to meet our assumption of linearity with the log odds of the outcome.
+
+To resolve the final assumption about standard logistic regression models, that there is little to no multicollinearity between predictors, we first need to create a model using all of our predictors. The only exception to this model is x6 and x7, which will be transformed slightly due to our findings earlier. Upon doing so, we are left with the following model:
+
+```{r}
+#| label: fig-D
+#| fig-cap: "Placeholder Caption"
+#| out-width: "80%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureD.png")
+```
+
+The serious lack of significant predictors is worrying, but a potential solution to that comes from dealing with multicollinearity within the model, if it exists. We can check using the “Cars” package in R, followed by the vif() function, with the above model as the input to it. Doing so garners this result:
+
+```{r}
+#| label: fig-E
+#| fig-cap: "Placeholder Caption"
+#| out-width: "40%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureE.png")
+```
+
+Due to the categorical nature of x8, we don’t have exact VIF values, and instead must use the adjusted VIF scores, denoted in @fig-E as column headed by GVIF^(1/(2*Df)). Adjusted VIF uses the same scale as the normal VIF but is compatible with categorical as well as numeric variables. As seen in @fig-E, there aren’t any adjusted VIF measurements above 10, but the lack of significant variables noted in @fig-D implies that there still may be some issues.
+
+If we drop the highest adjusted VIF variable from the model, x4, and recreate the model, we get the following report from function vif(): 
+
+```{r}
+#| label: fig-F
+#| fig-cap: "Placeholder Caption"
+#| out-width: "40%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureF.png")
+```
+
+This is a significant improvement from the previous model, implying minute amounts of multicollinearity. As a result of the nature of multicollinearity, any models with fewer predictors than the model represented in @fig-F will also have the same or lower levels of multicollinearity. Therefore, our model has kept all the standard assumptions of standard logistic regression intact, and our final standard logistic regression model is as seen in @fig-G:
+
+```{r}
+#| label: fig-G
+#| fig-cap: "Placeholder Caption"
+#| out-width: "80%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureG.png")
+```
+
+This model results in an 87.5% prediction accuracy, leaving room for improvement while still being quite decent at framing the data correctly.
+
+## Regularized Logistic Regression
+
+This version of a logistic regression model adds in a penalty term that works to diminish overfitting. In order to find the error term, we needed to turn the dataset into a matrix and use the cv.glmnet() function to use cross-validation and get a model for potential values. For our error term we used the minimum lambda described by the cross-validation model and implemented it using Lasso (L1) regularization via the glmnet() function using our data in matrix form again. The resulting model returned an accuracy of 88%, which is barely better than that of the standard logistic regression model.
+
+### Logistic GAM 
+
+Known also as the logistic generalized additive model, is a method for categorizing your outcome variable when you suspect that its predictors don’t follow a straight line (Daniel, 2025). We designate such variables by putting them inside the parenthesis of s( ), and using the modeling function gam() from the “mgcv” package. Considering its similar setup to standard logistic regression, we chose to use the same predictor variables as we did in that model, but using the s( ) on every predictor except for x8, because x8 is categorical. This led to a model seen in with an accuracy of 95.5%, a fantastic improvement upon the original logistic regression model.
+
+```{r}
+#| label: fig-H
+#| fig-cap: "Placeholder Caption"
+#| out-width: "100%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureH.png")
+```
+ 
 
 ```{r}
 data <- read.csv("data/FP_Data.csv")
@@ -524,3 +634,10 @@ cv_stats %>%
     title = "Accuracy by Model and by Fold"
   )
 ```
+
+\newpage
+# References
+
+Leung, K. (2025, March 5). Assumptions of logistic regression, clearly explained. Towards Data Science. https://towardsdatascience.com/assumptions-of-logistic-regression-clearly-explained-44d85a22b290/ 
+
+Daniel. (2025). Understanding Generalized Additive Models. RPubs. https://rpubs.com/AfroLogicInsect/GAM 
