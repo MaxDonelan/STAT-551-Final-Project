@@ -293,7 +293,7 @@ Using the glm function in R, we can fit a standard logistic regression using eve
  
 ```{r}
 #| label: fig-A
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Summary of Initial Logistic Model"
 #| out-width: "80%"
 #| fig-align: "center"
 #| fig-pos: "H"
@@ -306,7 +306,7 @@ With that, we can begin to critique the other requirements. Starting with checki
 
 ```{r}
 #| label: fig-B
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Binned y values vs individual predictors"
 #| out-width: "100%"
 #| fig-align: "center"
 #| fig-pos: "H"
@@ -319,7 +319,7 @@ The next assumption we need to check is that our independent variables need to b
 
 ```{r}
 #| label: fig-C
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Summaries of Box-Tidwell Models"
 #| out-width: "100%"
 #| fig-align: "center"
 #| fig-pos: "H"
@@ -332,7 +332,7 @@ To resolve the final assumption about standard logistic regression models, that 
 
 ```{r}
 #| label: fig-D
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Improved Standard Logistic Regression Model Summarized"
 #| out-width: "80%"
 #| fig-align: "center"
 #| fig-pos: "H"
@@ -343,7 +343,7 @@ The serious lack of significant predictors is worrying, but a potential solution
 
 ```{r}
 #| label: fig-E
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Initial VIF Report"
 #| out-width: "40%"
 #| fig-align: "center"
 #| fig-pos: "H"
@@ -356,7 +356,7 @@ If we drop the highest adjusted VIF variable from the model, x4, and recreate th
 
 ```{r}
 #| label: fig-F
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Improved VIF Report"
 #| out-width: "40%"
 #| fig-align: "center"
 #| fig-pos: "H"
@@ -367,7 +367,7 @@ This is a significant improvement from the previous model, implying minute amoun
 
 ```{r}
 #| label: fig-G
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Summary of Final Standard Logistic Regression Model"
 #| out-width: "80%"
 #| fig-align: "center"
 #| fig-pos: "H"
@@ -386,7 +386,7 @@ Known also as the logistic generalized additive model, is a method for categoriz
 
 ```{r}
 #| label: fig-H
-#| fig-cap: "Placeholder Caption"
+#| fig-cap: "Logistic GAM Model Summary"
 #| out-width: "100%"
 #| fig-align: "center"
 #| fig-pos: "H"
