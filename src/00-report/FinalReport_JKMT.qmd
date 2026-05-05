@@ -711,6 +711,8 @@ cv_stats %>%
   )
 ```
 
+In summary, we were given a data set with $y$ as a numerical variable. Taking our data we duplicated and transformed it into a second data set with $y\_bin$ as a binary categorical variable where $y\_bin$ = 1 if $y\ge70$ and $0$ otherwise. Diving into the data we observed our variables, their distributions and their correlations with each other. We then split our data into test and train splits and applied six models to predict $y$ and six more to predict $y\_bin$. Using cross validation for box plots and folds we were able to assess and compare our models with each other to dictate the model that predicts our test data. Least root mean squared error and mean absolute error were used to evaluate our regression models, where our baseline linear model is hard to beat. When predicting in our categorical models we used accuracy, false positive, and false negatives to determine our best model. Overall the regularized logistic and log logistic models performed the best.
+
 \newpage
 # References
 
