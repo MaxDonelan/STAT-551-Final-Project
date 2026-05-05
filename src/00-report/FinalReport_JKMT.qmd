@@ -367,7 +367,7 @@ knitr::include_graphics("src/00-report/figures/FromTate/figureA.png")
 
 Immediately the lack of significant predictors is apparent, with the majority of the independent variables holding p-values greater than 0.05. At this point, we need to check whether we have violated the assumptions of a standard logistic regression. Those assumptions are as follows: The outcome variable is binary, the data points in each group are independent (little to no clustering), the independent variables must be linearly related to the log-odds of the outcome, there must be little to no multicollinearity, no drastic outliers, and finally that we have a large sample size (Leung, 2025). A few of these we can check off quickly: Our outcome variable ybin is binary, it’s defined as described earlier in this section. Next, we can confirm that we have a large sample size because our data has 200 observations, which is generally considered large. 
 
-With that, we can begin to critique the other requirements. Starting with checking for outliers and clustering, we can plot the individual predictor variables against the original y to check for both. We use the original y because Those plots are as follows:
+With that, we can begin to critique the other requirements. Starting with checking for outliers and clustering, we can plot the individual predictor variables against the binned y values, whose plots are as follows:
 
 ```{r}
 #| label: fig-B
