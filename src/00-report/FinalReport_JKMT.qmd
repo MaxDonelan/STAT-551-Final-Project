@@ -126,12 +126,14 @@ df %>%
 ```{r}
 #| fig-height: 4
 #| fig-width: 6
-#| fig-cap: "Barplot of binary y"
+#| fig-cap: "Barplots of binary y by x8"
 
 df %>%
-  ggplot(aes(x = y_bin, fill = x8)) +
+  ggplot(aes(x = as.factor(y_bin), fill = x8)) +
   geom_bar() + 
-  facet_wrap(~x8)
+  facet_wrap(~x8) +
+  xlab("Binary y") +
+  theme(legend.position = "none")
 ``` 
 
 ```{r}
@@ -140,8 +142,9 @@ df %>%
 #| fig-cap: "Grouped barplot of binary y by x8"
 
 df %>%
-  ggplot(aes(x = y_bin, fill = x8)) +
-  geom_bar(position="dodge")
+  ggplot(aes(x = as.factor(y_bin), fill = x8)) +
+  geom_bar(position="dodge") +
+  xlab("Binary y")
 ```
 
 # Regression Models
@@ -611,7 +614,7 @@ for (i in 1:k) {
 
 ## Neural Networks
 
-Since neural networks can also be used for classification, we applied them here as well. As with the regression neural network, we used a single hidden layer with eight nodes, the Adam optimizer, a batch size of 32, and 50 epochs, all implemented in Python. However, since using the MSE loss function would eb nonsensical for classification, we instead used the cross entropy loss function. To this end, with 10-fold cross validation, we achieved a median accuracy of 0.8095, a median false positive rate of 0.1292, and a median false negative rate of 0.375.
+Since neural networks can also be used for classification, we applied them here as well. As with the regression neural network, we used a single hidden layer with eight nodes, the Adam optimizer, a batch size of 32, and 50 epochs, all implemented in Python. However, since using the MSE loss function would be nonsensical for classification, we instead used the cross entropy loss function. To this end, with 10-fold cross validation, we achieved a median accuracy of 0.8095, a median false positive rate of 0.1292, and a median false negative rate of 0.375.
 
 ```{r}
 nn_cv <- read.csv("src/04-cv/class_nn_cv_results.csv")
