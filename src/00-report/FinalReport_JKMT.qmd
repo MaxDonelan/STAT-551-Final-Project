@@ -582,25 +582,11 @@ for (i in 1:k) {
       ) %>% 
     select(-x8)
 
-  k_vals <- seq(1, 21, by = 2)
-  k_accuracy <- data.frame(k = k_vals, accuracy = NA)
-
-  for (k in k_vals) {
-    pred <- knn(
-      select(train_df_onehot, -y_bin), 
-      select(test_df_onehot, -y_bin), 
-      as.factor(train_df_onehot$y_bin), 
-      k = k
-    )
-    k_accuracy[k_accuracy$k == k, "accuracy"] <- mean(pred == test_df_onehot$y_bin)
-  }
-
-  best_k <- k_accuracy$k[which.max(k_accuracy$accuracy)]
   pred <- knn(
     select(train_df_onehot, -y_bin), 
     select(test_df_onehot, -y_bin), 
     as.factor(train_df_onehot$y_bin), 
-    k = best_k
+    k = 5
   )
 
   cv_stats[cv_stats$model == "KNN", "accuracy"][i] <- accuracy(pred, test_df_onehot$y_bin)
