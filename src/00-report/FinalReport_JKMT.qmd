@@ -442,6 +442,10 @@ Random forest can also be used for predicting categorical variables similarly to
 ## Boosted Trees for Classifiction
 
 For categorical predictions the boosting method is similar but different from regression. This difference stems from the use of binomial deviance rather than least square error like in the regression version. Through this change we can predict for a categorical variable. 
+
+## K-Nearest Neighbors
+
+K-Nearest Neighbors (KNN) assigns a class label to a new observation based on the most common class among its closest $K$ neighbors. In our case, $K=5$ was chosen using cross validation. Before fitting the parameters $x1$ through $x7$ were scaled to have a mean zero and a standard deviation of one to ensure all parameters contributed relatively equally. The categorical predictor $x8$ was encoded into four binary indicator columns in order to include it in the Euclidean distance measurement. Overall, with 10-fold cross validation KNN achieved a median accuracy of 84.17%, with a false negative rate at 0% for all but one fold.
  
 
 ```{r}
@@ -582,25 +586,11 @@ for (i in 1:k) {
       ) %>% 
     select(-x8)
 
-  k_vals <- seq(1, 21, by = 2)
-  k_accuracy <- data.frame(k = k_vals, accuracy = NA)
-
-  for (k in k_vals) {
-    pred <- knn(
-      select(train_df_onehot, -y_bin), 
-      select(test_df_onehot, -y_bin), 
-      as.factor(train_df_onehot$y_bin), 
-      k = k
-    )
-    k_accuracy[k_accuracy$k == k, "accuracy"] <- mean(pred == test_df_onehot$y_bin)
-  }
-
-  best_k <- k_accuracy$k[which.max(k_accuracy$accuracy)]
   pred <- knn(
     select(train_df_onehot, -y_bin), 
     select(test_df_onehot, -y_bin), 
     as.factor(train_df_onehot$y_bin), 
-    k = best_k
+    k = 5
   )
 
   cv_stats[cv_stats$model == "KNN", "accuracy"][i] <- accuracy(pred, test_df_onehot$y_bin)
