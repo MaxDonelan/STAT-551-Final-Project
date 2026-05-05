@@ -71,10 +71,13 @@ df <- df %>%
   )
 ```
 
-## Continuous $y$
+<!-- ## Continuous $y$ -->
+<!-- ### Correlations -->
 
-### Correlations
+The correlations in @fig-corrplot show that $x4$ is strongly positively correlated with $y$ and $y_bin$ while $x5$ is strongly negatively correlated with $y$ and $y\_bin$. However, $x4$ and $x5$ are also strongly negatively correlated with each other. This raises concerns for multicolinearity. The plot also shows that $x3$ and $x4$ are correlated. Other than those mentioned there are a few weak correlations, but most are about zero.
+
 ```{r}
+#| label: fig-corrplot
 #| fig-height: 4
 #| fig-width: 4
 #| fig-cap: "Correlations of Continuous Parameters"
@@ -82,8 +85,12 @@ df <- df %>%
 corrplot(cor(select(df, -x8)))
 ```
 
-### Pairplot
+<!-- ### Pairplot -->
+
+The scatterplots in @fig-pairplot show relatively the same information as @fig-corrplot with the addition of revealing the $cos(x)$ relationship between $x6$ and $x7$.
+
 ```{r}
+#| label: fig-pairplot
 #| fig-height: 6
 #| fig-width: 6
 #| fig-cap: "Scatterplots of Continuous Parameters"
@@ -91,10 +98,13 @@ corrplot(cor(select(df, -x8)))
 pairs(select(df, -x8))
 ```
 
-### $y$
+<!-- ### $y$ -->
+
+Our following linear regression and Principal Component Regresison models assume $y$ is normally distributed. We check that here by overlaying a normal distribution with the same mean and standard deviation as $y$ over a histogram of $y$.
+
 ```{r}
-#| fig-height: 4
-#| fig-width: 6
+#| fig-height: 3
+#| fig-width: 3
 #| fig-cap: "Histogram of y"
 
 df %>%
@@ -105,12 +115,19 @@ df %>%
     args = list(mean = mean(df$y), sd = sd(df$y)),
     color = "red",
     linewidth = 1
+  ) +
+  labs(
+    title = "Distribution of y Against Standard Normal",
+    x = "y",
+    y = "Density"
   )
 ``` 
 
+Here we check the distribution of $y$ grouped by $x8$. While each group does not appear as normally distributed as $y$ is overall, there is not any cause for concern here.
+
 ```{r}
-#| fig-height: 4
-#| fig-width: 6
+#| fig-height: 3
+#| fig-width: 3
 #| fig-cap: "Histograms of y by x8"
 
 df %>%
@@ -119,14 +136,13 @@ df %>%
   facet_wrap(~x8)
 ```
 
-- A right skewed
-- D left skewed
+<!-- ## Dichotomized $y$ -->
 
-## Dichotomized $y$
+Similarly we check the relationship between $y\_bin$ and $x8$. Here we notice that the classification groups are imbalance which can make prediction more difficult.
 
 ```{r}
-#| fig-height: 4
-#| fig-width: 6
+#| fig-height: 3
+#| fig-width: 3
 #| fig-cap: "Barplots of binary y by x8"
 
 df %>%
@@ -138,8 +154,8 @@ df %>%
 ``` 
 
 ```{r}
-#| fig-height: 4
-#| fig-width: 6
+#| fig-height: 3
+#| fig-width: 3
 #| fig-cap: "Grouped barplot of binary y by x8"
 
 df %>%
