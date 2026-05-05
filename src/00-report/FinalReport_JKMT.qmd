@@ -126,12 +126,14 @@ df %>%
 ```{r}
 #| fig-height: 4
 #| fig-width: 6
-#| fig-cap: "Barplot of binary y"
+#| fig-cap: "Barplots of binary y by x8"
 
 df %>%
-  ggplot(aes(x = y_bin, fill = x8)) +
+  ggplot(aes(x = as.factor(y_bin), fill = x8)) +
   geom_bar() + 
-  facet_wrap(~x8)
+  facet_wrap(~x8) +
+  xlab("Binary y") +
+  theme(legend.position = "none")
 ``` 
 
 ```{r}
@@ -140,8 +142,9 @@ df %>%
 #| fig-cap: "Grouped barplot of binary y by x8"
 
 df %>%
-  ggplot(aes(x = y_bin, fill = x8)) +
-  geom_bar(position="dodge")
+  ggplot(aes(x = as.factor(y_bin), fill = x8)) +
+  geom_bar(position="dodge") +
+  xlab("Binary y")
 ```
 
 # Regression Models
@@ -154,6 +157,11 @@ Random forest is an extension and improvement upon bagging by using decorrelatio
 ## Boosted Trees Regression
 
  Boosting builds off the premise of bagging with its own twist. In bagging the model is built on the single training set, on the other hand boosting is built sequentially. This means that if a tree is made, the next tree will be grown or made using the information of the previous tree. Any other tree made after this point will be grown from the information of all the trees before. Thus, boosting is not using bootstrap sampling. This process allows the model to avoid over fitting by learning slowly. Boosting does this by having three tuning parameters the number of trees, a shrinkage parameter, and the number of splits. In general, this model outperforms a random forest model.
+
+
+## Neural Networks
+
+Neural networks perform regression by learning the data via a set of nodes separated into input, hidden, and output layers. For our regression network, we use a single layer model with eight hidden nodes and a reLU activation function. Since Python's machine learning implementations are more developed than R, we chose to use PyTorch and Python 3.14.4 to run our neural networks. For training the model, we use the Adam optimizer as it is implemented in PyTorch with a learning rate of 0.01, 50 epochs of training, a batch size of 32 observations, and a MSE loss function. With 10-fold cross validation, we achieved a median RMSE of 10.4429 and a median MAE of 8.4182.
 
 <!-- ## Setup -->
 ```{r}
@@ -603,6 +611,10 @@ for (i in 1:k) {
 ```
 
 <!-- ## Adding the Python Neural Network Results -->
+
+## Neural Networks
+
+Since neural networks can also be used for classification, we applied them here as well. As with the regression neural network, we used a single hidden layer with eight nodes, the Adam optimizer, a batch size of 32, and 50 epochs, all implemented in Python. However, since using the MSE loss function would be nonsensical for classification, we instead used the cross entropy loss function. To this end, with 10-fold cross validation, we achieved a median accuracy of 0.8095, a median false positive rate of 0.1292, and a median false negative rate of 0.375.
 
 ```{r}
 nn_cv <- read.csv("src/04-cv/class_nn_cv_results.csv")
