@@ -81,6 +81,7 @@ The correlations in @fig-corrplot show that $x4$ is strongly positively correlat
 #| fig-height: 4
 #| fig-width: 4
 #| fig-cap: "Correlations of Continuous Parameters"
+#| fig-pos: "H"
 
 corrplot(cor(select(df, -x8)))
 ```
@@ -94,6 +95,7 @@ The scatterplots in @fig-pairplot show relatively the same information as @fig-c
 #| fig-height: 6
 #| fig-width: 6
 #| fig-cap: "Scatterplots of Continuous Parameters"
+#| fig-pos: "H"
 
 pairs(select(df, -x8))
 ```
@@ -104,8 +106,9 @@ Our following linear regression and Principal Component Regresison models assume
 
 ```{r}
 #| fig-height: 3
-#| fig-width: 3
+#| fig-width: 6
 #| fig-cap: "Histogram of y"
+#| fig-pos: "H"
 
 df %>%
   ggplot(aes(x = y)) +
@@ -127,8 +130,9 @@ Here we check the distribution of $y$ grouped by $x8$. While each group does not
 
 ```{r}
 #| fig-height: 3
-#| fig-width: 3
+#| fig-width: 6
 #| fig-cap: "Histograms of y by x8"
+#| fig-pos: "H"
 
 df %>%
   ggplot(aes(x = y, fill = x8)) +
@@ -142,8 +146,9 @@ Similarly we check the relationship between $y\_bin$ and $x8$. Here we notice th
 
 ```{r}
 #| fig-height: 3
-#| fig-width: 3
+#| fig-width: 6
 #| fig-cap: "Barplots of binary y by x8"
+#| fig-pos: "H"
 
 df %>%
   ggplot(aes(x = as.factor(y_bin), fill = x8)) +
@@ -155,8 +160,9 @@ df %>%
 
 ```{r}
 #| fig-height: 3
-#| fig-width: 3
+#| fig-width: 6
 #| fig-cap: "Grouped barplot of binary y by x8"
+#| fig-pos: "H"
 
 df %>%
   ggplot(aes(x = as.factor(y_bin), fill = x8)) +
