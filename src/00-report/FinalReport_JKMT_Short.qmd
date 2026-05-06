@@ -318,8 +318,6 @@ maebymodel <- cv_stats %>%
 
 ### Standard Binary Logistic Regression
 
-To fit the standard logistic regression, the first step we need to take is to redefine the dependent variable. Previously, y was able to take on any integer value from 0 to 100, but in the case defined by this project, y would need to be reduced to a binary variable depending on its previous larger scale values. This new version of y, ybin, is given a value of 1 if y’s previous value was greater than or equal to 70, or 0 otherwise. With variable ybin defined, our next step is to fit the first version of our standard logistic regression model.
-
 Using the glm function in R, we can fit a standard logistic regression using every predictor variable at our disposal (x1 through x8) in efforts to model ybin. The following Appendix @fig-A provides the numerical summary of that model:
 
 Immediately the lack of significant predictors is apparent, with the majority of the independent variables holding p-values greater than 0.05. At this point, we need to check whether we have violated the assumptions of a standard logistic regression. Those assumptions are as follows: The outcome variable is binary, the data points in each group are independent (little to no clustering), the independent variables must be linearly related to the log-odds of the outcome, there must be little to no multicollinearity, no drastic outliers, and finally that we have a large sample size (Leung, 2025). A few of these we can check off quickly: Our outcome variable ybin is binary, it’s defined as described earlier in this section. Next, we can confirm that we have a large sample size because our data has 200 observations, which is generally considered large. 
