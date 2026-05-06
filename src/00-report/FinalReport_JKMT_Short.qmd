@@ -30,7 +30,7 @@ Frontpage. Title, Contributors; Semester & Year.
 Introduction: A brief intro, restate the general objective, nature of variables in the dataset. At the end of this section, include a sentence how the rest of your report is organized.  
 
 Descriptive analyses: Includes graphical and numerical descriptive statistics, preliminary discussions regarding patterns in the data.
-Fitting and evaluating various predictive models. Continuous (y) and dichotomized (ybin) cases.   
+Fitting and evaluating various predictive models. Continuous (y) and dichotomized ($y\_bin$) cases.   
 
 Concluding remarks. 100 - 120 words. 
 
@@ -122,9 +122,7 @@ histogram_of_y_by_x8 <- df %>%
 
 <!-- ## Dichotomized $y$ -->
 
-Similarly in Appendix @fig-barplot_of_y_by_x8 we check the relationship between $y\_bin$ and $x8$. Here we notice that the classification groups are imbalance which can make prediction more difficult.
-
-Another comparison between $x8$ and $y\_bin$ can be found in Apendix @fig-groupedbarplot.
+Similarly in Appendix @fig-barplot_of_y_by_x8 we check the relationship between $y\_bin$ and $x8$. Here we notice that the classification groups are imbalance which can make prediction more difficult. Another comparison between $x8$ and $y\_bin$ can be found in Apendix @fig-groupedbarplot.
 
 ## Regression Models
 
@@ -141,6 +139,9 @@ Random forest is an extension and improvement upon bagging by using decorrelatio
 
  Boosting builds off the premise of bagging with its own twist. In bagging the model is built on the single training set, on the other hand boosting is built sequentially. This means that if a tree is made, the next tree will be grown or made using the information of the previous tree. Any other tree made after this point will be grown from the information of all the trees before. Thus, boosting is not using bootstrap sampling. This process allows the model to avoid over fitting by learning slowly. Boosting does this by having three tuning parameters the number of trees, a shrinkage parameter, and the number of splits. In general, this model outperforms a random forest model.
 
+## Principal Component Regression (PCR)
+
+Principal component regression works by first performing principal component analysis (PCA) to select a subset of principal components, then by using those principal components as the inputs for a linear regression model. PCA uses the singular value decomposition of the data to create a set of principal components, combinations of the original features, that maximize the variance of the data along that axis. To determine the number of principal components to keep, we use the "onesigma" approach given by the selectNcomp() function, which is based on the standard error of the CV results. Using 10-fold cross validation, we obtained a median RMSE of 9.8002 and a median MAE of 7.5488.
 
 ### Neural Networks
 
@@ -318,31 +319,19 @@ maebymodel <- cv_stats %>%
 
 ### Standard Binary Logistic Regression
 
-Using the glm function in R, we can fit a standard logistic regression using every predictor variable at our disposal (x1 through x8) in efforts to model ybin. The following Appendix @fig-A provides the numerical summary of that model:
+Using the glm function in R, we can fit a standard logistic regression using every predictor Appendix @fig-A provides the numerical summary of that model. Immediately the lack of significant predictors is apparent, with the majority of the independent variables holding p-values greater than 0.05. At this point, we need to check whether we have violated the assumptions of a standard logistic regression. Those assumptions are as follows: The outcome variable is binary, the data points in each group are independent (little to no clustering), the independent variables must be linearly related to the log-odds of the outcome, there must be little to no multicollinearity, no drastic outliers, and finally that we have a large sample size (Leung, 2025). A few of these we can check off quickly: First, our outcome variable $y\_bin$ is binary. Next, our sample size of 200 is generally considered large enough. Now, starting with checking for outliers and clustering, we can plot the individual predictor variables against the binned y values, whose plots are in Apendix @fig-B.
 
-Immediately the lack of significant predictors is apparent, with the majority of the independent variables holding p-values greater than 0.05. At this point, we need to check whether we have violated the assumptions of a standard logistic regression. Those assumptions are as follows: The outcome variable is binary, the data points in each group are independent (little to no clustering), the independent variables must be linearly related to the log-odds of the outcome, there must be little to no multicollinearity, no drastic outliers, and finally that we have a large sample size (Leung, 2025). A few of these we can check off quickly: Our outcome variable ybin is binary, it’s defined as described earlier in this section. Next, we can confirm that we have a large sample size because our data has 200 observations, which is generally considered large. 
-
-With that, we can begin to critique the other requirements. Starting with checking for outliers and clustering, we can plot the individual predictor variables against the binned y values, whose plots are as follows:
-
-Seen in Appendix @fig-B, none of the values from the predictor variables have extravagant outliers, nor do they cluster dramatically in any scatterplot. At the bottom right of Appendix @fig-B we have the plot of ybin vs x8, which is different from the rest because x8 is a categorical variable. There’s no outliers to be seen here either, because values of x8 can only be A, B, C, or D. Thus, we’ve met two more of our assumptions.
+As sen in Appendix @fig-B, none of the values from the predictor variables have extravagant outliers, nor do they cluster dramatically in any scatterplot. At the bottom right of Appendix @fig-B we have the plot of $y\_bin$ vs x8, which is different from the rest because x8 is a categorical variable. There’s no outliers to be seen here either, because values of x8 can only be $A$, $B$, $C$, or $D$. Thus, we’ve met two more of our assumptions.
 
 The next assumption we need to check is that our independent variables need to be linearly related to the log odds of the outcome. This can be done using the Box-Tidwell test. To do so, we must first define a new variable for each predictor variable (xn) that is equal to $xn*log(xn)$. Then, we define a logistic regression model, modeling yin with xn and $xn*log(xn)$ as the only predictors. When we look at the model’s summary, if the $xn*log(xn)$’s p-value is significant ( < 0.05) , then we cannot assume xn is linearly related to the log odds of the outcome (Leung, 2025). These steps are repeated for each predictor variable, as shown in the below figure. Note that newxn represents the $xn*log(xn)$ value for the nth predictor variable.
 
-Above in Appendix @Fig-C, we notice that for predictors x6 and x7, we have to reject our assumption that they are linearly related to the log-odds of ybin due to their low p-values. This means that for the actual model, we must transform them slightly instead of simply using them as they come from the dataset. In doing so, we are able to meet our assumption of linearity with the log odds of the outcome.
+In Appendix @Fig-C, we notice that for predictors $x6$ and $x$7, we reject our assumption that they are linearly related to the log-odds of $y\_bin$ due to their low p-values. This means that for the actual model, we must transform them slightly instead of simply using them as they come from the dataset. To resolve the final assumption about standard logistic regression models, that there is little to no multicollinearity between predictors, we first need to create a model using all of our predictors. The only exception to this model is $x6$ and $x7$, which will be transformed slightly due to our findings earlier. Upon doing so, we are left with the model in Apendix @fig-D.
 
-To resolve the final assumption about standard logistic regression models, that there is little to no multicollinearity between predictors, we first need to create a model using all of our predictors. The only exception to this model is x6 and x7, which will be transformed slightly due to our findings earlier. Upon doing so, we are left with the following model:
-
-The serious lack of significant predictors is worrying, but a potential solution to that comes from dealing with multicollinearity within the model, if it exists. We can check using the “Cars” package in R, followed by the vif() function, with the above model as the input to it. Doing so garners this result:
-
-Due to the categorical nature of x8, we don’t have exact VIF values, and instead must use the adjusted VIF scores, denoted in Appendix @fig-E as column headed by GVIF^(1/(2*Df)). Adjusted VIF uses the same scale as the normal VIF but is compatible with categorical as well as numeric variables. As seen in Appendix @fig-E, there aren’t any adjusted VIF measurements above 10, but the lack of significant variables noted in Appendix @fig-D implies that there still may be some issues.
-
-If we drop the highest adjusted VIF variable from the model, x4, and recreate the model, we get the following report from function vif(): 
+The serious lack of significant predictors is worrying, but a potential solution to that comes from dealing with multicollinearity within the model, if it exists. We can check using the “Cars” package in R, followed by the vif() function, with the above model as the input to it. Doing so gives the result in Apendix @fig-E. Due to the categorical nature of x8, we don’t have exact VIF values, and instead must use the adjusted VIF scores, denoted in Appendix @fig-E as column headed by GVIF^(1/(2*Df)). Adjusted VIF uses the same scale as the normal VIF but is compatible with categorical as well as numeric variables. As seen in Appendix @fig-E, there aren’t any adjusted VIF measurements above 10, but the lack of significant variables noted in Appendix @fig-D implies that there still may be some issues. If we drop the highest adjusted VIF variable from the model, $x4$, and recreate the model, we get the following report from function vif() in Apendix @fig-F
 
 This is a significant improvement from the previous model, implying minute amounts of multicollinearity. As a result of the nature of multicollinearity, any models with fewer predictors than the model represented in Appendix @fig-F will also have the same or lower levels of multicollinearity. Therefore, our model has kept all the standard assumptions of standard logistic regression intact, and our final standard logistic regression model is as seen in Appendix @fig-G:
 
-This model results in an 87.5% prediction accuracy, leaving room for improvement while still being quite decent at framing the data correctly. 
-
-In our final models we test a baseline logistic model using all eight parameters and a log logistic model which uses the log of $x6$ and $x7$ and along with all other parameters except for $x4$.
+This model results in an 87.5% prediction accuracy, leaving room for improvement while still being quite decent at framing the data correctly. In our 10-fold cross validation models we test a baseline logistic model using all eight parameters and a log logistic model which uses the log of $x6$ and $x7$ and along with all other parameters except for $x4$.
 
 ### Regularized Logistic Regression
 
