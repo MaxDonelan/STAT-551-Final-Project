@@ -172,6 +172,10 @@ df %>%
 
 # Regression Models
 
+## Linear Regression
+
+We fit two basic linear regression models one with all predictors labeled "baseline linear" and another model with only x4, x7, and x8 labeled "small linear". The linear models performed very well in the 10-fold cross validation compared to following regression models. The linear models assume that $y$ is normally distributed which is a reasonable assumption from the EDA plots above.
+
 ## Random Forest Regression
 
 Random forest is an extension and improvement upon bagging by using decorrelation. Bootstrap aggregation or bagging uses a tree based method and bootstrapping by taking repeated samples from the same training set and taking the average of the models, to make a new model that reduces the variance. The difference between bagging and random forest is that random forest uses, m, a random sample of our predictors from our total predictors p. A majority of the time m is found by evaluating the square root of p. Therefore, when there is a split in the tree, the model is not allowed to consider all the predictors. This is important as it allows other predictors to essentially have a chance, as some of the splits will not consider our strongest predictors. At the end of the models’ processes the average of our resulting trees will have less variability and therefore be a more reliable prediction. Random forest is especially helpful when we have many highly correlated predictors.
