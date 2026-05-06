@@ -439,7 +439,9 @@ This is a significant improvement from the previous model, implying minute amoun
 knitr::include_graphics("src/00-report/figures/FromTate/figureG.png")
 ```
 
-This model results in an 87.5% prediction accuracy, leaving room for improvement while still being quite decent at framing the data correctly.
+This model results in an 87.5% prediction accuracy, leaving room for improvement while still being quite decent at framing the data correctly. 
+
+In our final models we test a baseline logistic model using all eight parameters and a log logistic model which uses the log of $x6$ and $x7$ and along with all other parameters except for $x4$.
 
 ## Regularized Logistic Regression
 
@@ -457,14 +459,6 @@ Known also as the logistic generalized additive model, is a method for categoriz
 #| fig-pos: "H"
 knitr::include_graphics("src/00-report/figures/FromTate/figureH.png")
 ```
-
-## Random Forest Classification
-
-Random forest can also be used for predicting categorical variables similarly to regression with a slight change. When predicting a categorical variable, we record each class predicted by each tree. After observing our predictions, the class with the majority of predictions from the trees will be our prediction.
-
-## Boosted Trees for Classifiction
-
-For categorical predictions the boosting method is similar but different from regression. This difference stems from the use of binomial deviance rather than least square error like in the regression version. Through this change we can predict for a categorical variable. 
 
 ## K-Nearest Neighbors
 
@@ -711,7 +705,9 @@ cv_stats %>%
   )
 ```
 
-In summary, we were given a data set with $y$ as a numerical variable. Taking our data we duplicated and transformed it into a second data set with $y\_bin$ as a binary categorical variable where $y\_bin$ = 1 if $y\ge70$ and $0$ otherwise. Diving into the data we observed our variables, their distributions and their correlations with each other. We then split our data into test and train splits and applied six models to predict $y$ and six more to predict $y\_bin$. Using cross validation for box plots and folds we were able to assess and compare our models with each other to dictate the model that predicts our test data. Least root mean squared error and mean absolute error were used to evaluate our regression models, where our baseline linear model is hard to beat. When predicting in our categorical models we used accuracy, false positive, and false negatives to determine our best model. Overall the regularized logistic and log logistic models performed the best.
+# Conclusion
+
+We were given seven numerical predictors labeled $x1$ through $x7$ and one categorical predictor $x8$ for predicting a response variable $y$. Additionally $y$ was transformed into $y\_bin$ by setting $y\_bin$ = 1 if $y\ge70$ and $0$ otherwise. Initial exploratory data analysis revealed that predictors $x3$, $x4$, $x5$, and $x7$ were well correlated with $y$ and $y\_bin$, with $x4$ and $x5$ correlated with each other. We applied six regression models to predict $y$ and six classification models to predict $y\_bin$. Then 10-fold cross validation was used to assess the models. Root Mean Squared Error and Mean Absolute Error was assessed for the regression models and Accuracy, False Positive Rate, and False Negative Rate. For regression the linear models performed best while for classification k-nearest neighbors, regularized logistic, and log logistic models all performed well.
 
 \newpage
 # References
