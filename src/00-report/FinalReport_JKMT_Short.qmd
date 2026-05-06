@@ -1,0 +1,765 @@
+---
+title: "Final Report for STAT 451/551"
+author: "Jack Barney, Kyle Maher, Max Donelan, & Tate Wietfeld"
+date: 2026-05-05
+date-format: "[Spring] YYYY"
+format:
+  pdf:
+    self-contained: true
+    documentclass: scrreprt
+    mainfont: "Times New Roman"
+    fontsize: 12pt  
+    linestretch: 1.5
+    geometry:
+      - margin=1in
+    pdf-engine: xelatex
+execute:
+  warning: false
+  message: false
+  echo: false
+editor_options: 
+  chunk_output_type: console
+header-includes:
+  - \graphicspath{{../../}}
+  - \renewcommand{\chapterheadstartvskip}{\vspace*{-\topskip}}
+---
+
+<!-- 
+Frontpage. Title, Contributors; Semester & Year. 
+
+Introduction: A brief intro, restate the general objective, nature of variables in the dataset. At the end of this section, include a sentence how the rest of your report is organized.  
+
+Descriptive analyses: Includes graphical and numerical descriptive statistics, preliminary discussions regarding patterns in the data.
+Fitting and evaluating various predictive models. Continuous (y) and dichotomized (ybin) cases.   
+
+Concluding remarks. 100 - 120 words. 
+
+Sources. Textbook, research papers, internet, etc. Use APA style.
+
+Appendix. A brief explanation of the programs used. Supplemental or extended results as needed.  
+-->
+
+## Introduction
+
+The given FP data contains $200$ observations of eight predictors labeld $x1$ through $x8$, and the resulting response parameter $y$. Additional consideration was given to predicting $y\_bin$ which is $1$ if $y$ is greater than or equal to $70$ and $0$ otherwise. $x1$ through $x7$ are continuous while $x8$ is categorical with four groups $A, B, C,$ and $D$. No context surrounding the predictors or response parameters was given. This report is segmented into initial Exploratory Data Analysis, followed by the Regression Models, then the Classification Models, and concludes with some overall observations. All code can be found in the following GitHub Repository <https://github.com/MaxDonelan/STAT-551-Final-Project>.
+
+<!-- SETUP: All Libraries -->
+```{r}
+library(knitr)
+library(dplyr)         # Data Manipulation
+library(ggplot2)       # Plotting
+library(pls)           # PCR
+library(corrplot)      # Correlations Plot (function in pls masks)
+library(randomForest)  # Random Forest
+library(gbm)           # Boosted Trees
+library(class)         # knn
+library(glmnet)        # Regularized Logistic
+library(mgcv)          # Logistic GAM
+
+set.seed(2800)
+```
+
+## Exploratory Data Analysis
+
+```{r}
+data <- read.csv("data/FP_Data.csv")
+df <- as.data.frame(data)
+df <- df %>%
+  mutate(
+    y_bin = ifelse(y >= 70, 1, 0),
+    x8 = as.factor(x8)
+  )
+```
+
+<!-- ## Continuous $y$ -->
+<!-- ### Correlations -->
+
+The correlations in @fig-corrplot show that $x4$ is strongly positively correlated with $y$ and $y\_bin$ while $x5$ is strongly negatively correlated with $y$ and $y\_bin$. However, $x4$ and $x5$ are also strongly negatively correlated with each other. This raises concerns for multicolinearity. The plot also shows that $x3$ and $x4$ are correlated. Other than those mentioned there are a few weak correlations, but surprisingly most are around zero.
+
+```{r}
+#| label: fig-corrplot
+#| fig-height: 3
+#| fig-width: 3
+#| fig-cap: "Correlations of Continuous Parameters"
+#| fig-pos: "H"
+
+corrplot(cor(select(df, -x8)))
+```
+
+<!-- ### Pairplot -->
+
+The scatterplots in Apendex @fig-pairplot show relatively the same information as @fig-corrplot with the addition of revealing the $cos(x)$ relationship between $x6$ and $x7$.
+
+<!-- ### $y$ -->
+
+Our following linear regression and Principal Component Regresison models assume $y$ is normally distributed. We check that in Appendix @fig-y_histogram by overlaying a normal distribution with the same mean and standard deviation as $y$ over a histogram of $y$.
+
+```{r}
+y_histogram <- df %>%
+  ggplot(aes(x = y)) +
+  geom_histogram(bins = 15, aes(y = after_stat(density))) +
+  stat_function(
+    fun = dnorm,
+    args = list(mean = mean(df$y), sd = sd(df$y)),
+    color = "red",
+    linewidth = 1
+  ) +
+  labs(
+    title = "Distribution of y Against Standard Normal",
+    x = "y",
+    y = "Density"
+  )
+```
+
+In Appendix @fig-histogram_of_y_by_x8 we check the distribution of $y$ grouped by $x8$. Each group doesn't appear as normally distributed as $y$ is overall.
+
+```{r}
+histogram_of_y_by_x8 <- df %>%
+  ggplot(aes(x = y, fill = x8)) +
+  geom_histogram(bins = 10) +
+  facet_wrap(~x8)
+```
+
+<!-- ## Dichotomized $y$ -->
+
+Similarly in Appendix @fig-barplot_of_y_by_x8 we check the relationship between $y\_bin$ and $x8$. Here we notice that the classification groups are imbalance which can make prediction more difficult.
+
+Another comparison between $x8$ and $y\_bin$ can be found in Apendix @fig-groupedbarplot.
+
+## Regression Models
+
+### Linear Regression
+
+We fit two basic linear regression models one with all predictors labeled "baseline linear" and another model with only $x4$, $x7$, and $x8$ labeled "small linear".The linear models assume that $y$ is normally distributed which is a reasonable assumption from the EDA plots above. The linear models performed very well in the 10-fold cross validation compared to following regression models.
+
+### Random Forest Regression
+
+Random forest is an extension and improvement upon bagging by using decorrelation. Bootstrap aggregation or bagging uses a tree based method and bootstrapping by taking repeated samples from the same training set and taking the average of the models, to make a new model that reduces the variance. The difference between bagging and random forest is that random forest uses, $m$, a random sample of our predictors from our total predictors $p$. A majority of the time $m$ is found by evaluating the square root of $p$. Therefore, when there is a split in the tree, the model is not allowed to consider all the predictors. This is important as it allows other predictors to essentially have a chance, as some of the splits will not consider our strongest predictors. At the end of the models’ processes the average of our resulting trees will have less variability and therefore be a more reliable prediction. Random forest is especially helpful when we have many highly correlated predictors.
+
+
+### Boosted Trees Regression
+
+ Boosting builds off the premise of bagging with its own twist. In bagging the model is built on the single training set, on the other hand boosting is built sequentially. This means that if a tree is made, the next tree will be grown or made using the information of the previous tree. Any other tree made after this point will be grown from the information of all the trees before. Thus, boosting is not using bootstrap sampling. This process allows the model to avoid over fitting by learning slowly. Boosting does this by having three tuning parameters the number of trees, a shrinkage parameter, and the number of splits. In general, this model outperforms a random forest model.
+
+
+### Neural Networks
+
+Neural networks perform regression by learning the data via a set of nodes separated into input, hidden, and output layers. For our regression network, we use a single layer model with eight hidden nodes and a reLU activation function. Since Python's machine learning implementations are more developed than R, we chose to use PyTorch and Python 3.14.4 to run our neural networks. For training the model, we use the Adam optimizer as it is implemented in PyTorch with a learning rate of 0.01, 50 epochs of training, a batch size of 32 observations, and a MSE loss function. With 10-fold cross validation, we achieved a median RMSE of 10.4429 and a median MAE of 8.4182.
+
+<!-- ## Setup -->
+```{r}
+set.seed(2800)
+k <- 10
+# Stratifiy by x8 group
+data <- read.csv("data/FP_Data.csv")
+df <- as.data.frame(data)
+df <- df %>%
+  group_by(x8) %>%
+  mutate(fold = sample(rep(1:k, length.out = n()))) %>%
+  ungroup() %>%
+  mutate(x8 = as.factor(x8))  # For gbm() (BostedTrees)
+
+# Output Cross Validation Split for Python Models
+write.csv(df, "src/04-cv/10-fold-cv.csv", row.names = FALSE)
+
+model_names <- c("BaselineLM", "SmallLM", "PCR", "RandomForest", "BoostedTrees")
+model_count <- length(model_names)
+cv_stats <- data.frame(
+  fold = rep(1:k, model_count),
+  model = rep(model_names, each = k),
+  rmse = NA,
+  mae = NA
+)
+# Root Mean Squared Error
+rmse <- function(actual, predicted) {
+  return(sqrt(mean((actual - predicted)^2)))
+}
+# Mean Absolute Error
+mae <- function(actual, predicted) {
+  return(mean(abs(actual - predicted)))
+}
+```
+
+<!-- ## Running the Cross Validation -->
+```{r}
+for (i in 1:k) {
+  train_df <- filter(df, fold != i) %>%
+    select(-fold)
+  test_df <- filter(df, fold == i) %>%
+    select(-fold)
+  
+  # Baseline LM
+  baseline_lm <- lm(y ~ ., data = train_df)
+  pred <- predict(baseline_lm, newdata = test_df)
+  cv_stats[cv_stats$model == "BaselineLM", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "BaselineLM", "mae"][i] <- mae(test_df$y, pred)
+
+  # Small LM
+  small_lm <- lm(y ~ x4 + x8 + x7, data = train_df)
+  pred <- predict(small_lm, newdata = test_df)
+  cv_stats[cv_stats$model == "SmallLM", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "SmallLM", "mae"][i] <- mae(test_df$y, pred)
+
+  # PCR
+  train_df_onehot <- train_df %>% 
+    mutate(
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  test_df_onehot <- test_df  %>% 
+    mutate(
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  pcr_model <- pcr(y ~ ., data = train_df_onehot, validation = "CV")
+  num_components <- selectNcomp(pcr_model, method = "onesigma")
+  pred <- predict(pcr_model, newdata = test_df_onehot)[, , num_components]
+  cv_stats[cv_stats$model == "PCR", "rmse"][i] <- rmse(test_df_onehot$y, pred)
+  cv_stats[cv_stats$model == "PCR", "mae"][i] <- mae(test_df_onehot$y, pred)
+
+  # Random Forest
+  rf_model <- randomForest(y ~ ., data = train_df, mtry = 6, importance = TRUE)
+  pred <- predict(rf_model, newdata = test_df)
+  cv_stats[cv_stats$model == "RandomForest", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "RandomForest", "mae"][i] <- mae(test_df$y, pred)
+
+  # Boosted Trees
+  bt_model <- gbm(
+    y ~ .,
+    data = train_df,
+    distribution = "gaussian", 
+    n.trees = 5000,
+    interaction.depth = 4
+  )
+  pred <- predict(bt_model, newdata = test_df, n.trees = 5000)
+  cv_stats[cv_stats$model == "BoostedTrees", "rmse"][i] <- rmse(test_df$y, pred)
+  cv_stats[cv_stats$model == "BoostedTrees", "mae"][i] <- mae(test_df$y, pred)
+}
+```
+
+<!-- ## Add Python Neural Network Results -->
+```{r}
+nn_cv <- read.csv("src/04-cv/reg_nn_cv_results.csv")
+cv_stats <- bind_rows(cv_stats, nn_cv)
+```
+
+### Plotting the 10-Fold Cross Validation Metrics
+
+```{r}
+#| fig-cap: "RMSE by Model for Each Fold"
+#| fig-width: 6
+#| fig-height: 3
+
+cv_stats %>%
+  ggplot(aes(x = model, y = rmse, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "RMSE",
+    title = "Root Mean Squared Error by Model"
+  )
+```
+
+A smaller RMSE is better so the Baseline Linear and Small Linear models performed the best here. A representation of each fold can be found in Appendix @fig-rmsebymodelandfold.
+
+```{r}
+#| fig-cap: "RMSE by Model and by Fold"
+
+rmsebymodelandfold <- cv_stats %>%
+  ggplot(aes(x = model, y = rmse, color = as.factor(fold), group = fold)) +
+  geom_line(linewidth = 1) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "RMSE",
+    title = "RMSE by Model and by Fold"
+  )
+```
+
+The Mean Absolute Error was also considered which can be found in Appendix @fig-maebymodel.
+
+```{r}
+#| fig-cap: "MAE by Model for Each Fold"
+
+maebymodel <- cv_stats %>%
+  ggplot(aes(x = model, y = mae, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "MAE",
+    title = "Mean Absolute Error by Model"
+  )
+```
+
+
+## Classification Models
+
+### Standard Binary Logistic Regression
+
+Using the glm function in R, we can fit a standard logistic regression using every predictor variable at our disposal (x1 through x8) in efforts to model ybin. The following Appendix @fig-A provides the numerical summary of that model:
+
+Immediately the lack of significant predictors is apparent, with the majority of the independent variables holding p-values greater than 0.05. At this point, we need to check whether we have violated the assumptions of a standard logistic regression. Those assumptions are as follows: The outcome variable is binary, the data points in each group are independent (little to no clustering), the independent variables must be linearly related to the log-odds of the outcome, there must be little to no multicollinearity, no drastic outliers, and finally that we have a large sample size (Leung, 2025). A few of these we can check off quickly: Our outcome variable ybin is binary, it’s defined as described earlier in this section. Next, we can confirm that we have a large sample size because our data has 200 observations, which is generally considered large. 
+
+With that, we can begin to critique the other requirements. Starting with checking for outliers and clustering, we can plot the individual predictor variables against the binned y values, whose plots are as follows:
+
+Seen in Appendix @fig-B, none of the values from the predictor variables have extravagant outliers, nor do they cluster dramatically in any scatterplot. At the bottom right of Appendix @fig-B we have the plot of ybin vs x8, which is different from the rest because x8 is a categorical variable. There’s no outliers to be seen here either, because values of x8 can only be A, B, C, or D. Thus, we’ve met two more of our assumptions.
+
+The next assumption we need to check is that our independent variables need to be linearly related to the log odds of the outcome. This can be done using the Box-Tidwell test. To do so, we must first define a new variable for each predictor variable (xn) that is equal to $xn*log(xn)$. Then, we define a logistic regression model, modeling yin with xn and $xn*log(xn)$ as the only predictors. When we look at the model’s summary, if the $xn*log(xn)$’s p-value is significant ( < 0.05) , then we cannot assume xn is linearly related to the log odds of the outcome (Leung, 2025). These steps are repeated for each predictor variable, as shown in the below figure. Note that newxn represents the $xn*log(xn)$ value for the nth predictor variable.
+
+Above in Appendix @Fig-C, we notice that for predictors x6 and x7, we have to reject our assumption that they are linearly related to the log-odds of ybin due to their low p-values. This means that for the actual model, we must transform them slightly instead of simply using them as they come from the dataset. In doing so, we are able to meet our assumption of linearity with the log odds of the outcome.
+
+To resolve the final assumption about standard logistic regression models, that there is little to no multicollinearity between predictors, we first need to create a model using all of our predictors. The only exception to this model is x6 and x7, which will be transformed slightly due to our findings earlier. Upon doing so, we are left with the following model:
+
+The serious lack of significant predictors is worrying, but a potential solution to that comes from dealing with multicollinearity within the model, if it exists. We can check using the “Cars” package in R, followed by the vif() function, with the above model as the input to it. Doing so garners this result:
+
+Due to the categorical nature of x8, we don’t have exact VIF values, and instead must use the adjusted VIF scores, denoted in Appendix @fig-E as column headed by GVIF^(1/(2*Df)). Adjusted VIF uses the same scale as the normal VIF but is compatible with categorical as well as numeric variables. As seen in Appendix @fig-E, there aren’t any adjusted VIF measurements above 10, but the lack of significant variables noted in Appendix @fig-D implies that there still may be some issues.
+
+If we drop the highest adjusted VIF variable from the model, x4, and recreate the model, we get the following report from function vif(): 
+
+This is a significant improvement from the previous model, implying minute amounts of multicollinearity. As a result of the nature of multicollinearity, any models with fewer predictors than the model represented in Appendix @fig-F will also have the same or lower levels of multicollinearity. Therefore, our model has kept all the standard assumptions of standard logistic regression intact, and our final standard logistic regression model is as seen in Appendix @fig-G:
+
+This model results in an 87.5% prediction accuracy, leaving room for improvement while still being quite decent at framing the data correctly. 
+
+In our final models we test a baseline logistic model using all eight parameters and a log logistic model which uses the log of $x6$ and $x7$ and along with all other parameters except for $x4$.
+
+### Regularized Logistic Regression
+
+This version of a logistic regression model adds in a penalty term that works to diminish overfitting. In order to find the error term, we needed to turn the dataset into a matrix and use the cv.glmnet() function to use cross-validation and get a model for potential values. For our error term we used the minimum lambda described by the cross-validation model and implemented it using Lasso (L1) regularization via the glmnet() function using our data in matrix form again. The resulting model returned an accuracy of 88%, which is barely better than that of the standard logistic regression model.
+
+#### Logistic GAM 
+
+Known also as the logistic generalized additive model, is a method for categorizing your outcome variable when you suspect that its predictors don’t follow a straight line (Daniel, 2025). We designate such variables by putting them inside the parenthesis of s( ), and using the modeling function gam() from the “mgcv” package. Considering its similar setup to standard logistic regression, we chose to use the same predictor variables as we did in that model, but using the s( ) on every predictor except for x8, because x8 is categorical. This led to a model seen in with an accuracy of 95.5%, a fantastic improvement upon the original logistic regression model.
+
+### K-Nearest Neighbors
+
+K-Nearest Neighbors (KNN) assigns a class label to a new observation based on the most common class among its closest $K$ neighbors. In our case, $K=5$ was chosen using cross validation. Before fitting the parameters $x1$ through $x7$ were scaled to have a mean zero and a standard deviation of one to ensure all parameters contributed relatively equally. The categorical predictor $x8$ was encoded into four binary indicator columns in order to include it in the Euclidean distance measurement. Overall, with 10-fold cross validation KNN achieved a median accuracy of 84.17%, with a false negative rate at 0% for all but one fold.
+ 
+
+```{r}
+data <- read.csv("data/FP_Data.csv")
+df <- as.data.frame(data)
+df <- df %>%
+  mutate(
+    y_bin = ifelse(y >= 70, 1, 0),
+    x8 = as.factor(x8)
+  ) %>%
+  select(-y)
+```
+
+<!-- ## Setup -->
+```{r}
+set.seed(2800)
+k <- 10
+# Stratifiy by x8 group
+df <- df %>%
+  group_by(x8) %>%
+  mutate(fold = sample(rep(1:k, length.out = n()))) %>%
+  ungroup()
+
+model_names <- c(
+  "BaselineLogistic", 
+  "LogLogistic", 
+  "RegularizedLogisitc", 
+  "LogisticGAM", 
+  "KNN"
+)
+
+model_count <- length(model_names)
+cv_stats <- data.frame(
+  fold = rep(1:k, model_count),
+  model = rep(model_names, each = k),
+  accuracy = NA,
+  fpr = NA,
+  fnr = NA
+)
+# Accuracy
+accuracy <- function(actual, predicted) {
+  return(mean(actual == predicted))
+}
+
+# False Positive Rate
+fpr <- function(actual, predicted) {
+  return(sum(predicted == 1 & actual == 0) / sum(actual == 0))
+}
+
+# False Negative Rate
+fnr <- function(actual, predicted) {
+  return(sum(predicted == 0 & actual == 1) / sum(actual == 1))
+}
+```
+
+<!-- ## Running the Cross Validation -->
+```{r}
+for (i in 1:k) {
+  train_df <- filter(df, fold != i) %>%
+    select(-fold)
+  test_df <- filter(df, fold == i) %>%
+    select(-fold)
+  
+  # Baseline Logistic
+  baseline_logistic <- glm(y_bin ~ ., data = train_df, family = "binomial")
+  pred_prob <- predict(baseline_logistic, newdata = test_df, type = "response")
+  pred <- ifelse(pred_prob >= .5, 1, 0)
+  cv_stats[cv_stats$model == "BaselineLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "BaselineLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "BaselineLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # Log Logistic
+  log_logistic <- glm(
+    y_bin ~ x1 + x2 + x3 + x5 + log(x6 + 3) + log(x7 + 3) + x8, 
+    data = train_df,
+    family = "binomial"
+  )
+  pred_prob <- predict(log_logistic, newdata = test_df, type = "response")
+  pred <- ifelse(pred_prob >= .5, 1, 0)
+  cv_stats[cv_stats$model == "LogLogistic", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogLogistic", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogLogistic", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # Regularized Logistic
+  train_mat <- as.matrix(select(train_df, -y_bin))
+  test_mat <- as.matrix(select(test_df, -y_bin))
+  cv <- cv.glmnet(train_mat, train_df$y_bin, family = "binomial", alpha = 1)
+  lambda <- cv$lambda.min
+  reg_logistic <- glmnet(train_mat, train_df$y_bin, family = "binomial", alpha = 1, lambda = lambda)
+  predict_probs <- predict(reg_logistic, newx = test_mat, s = lambda, type = "response")
+  pred <- ifelse(predict_probs >=.5, 1, 0)
+  cv_stats[cv_stats$model == "RegularizedLogisitc", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "RegularizedLogisitc", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "RegularizedLogisitc", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # Logistic GAM
+  logistic_gam <- gam(
+    y_bin ~ s(x1) + s(x2) + s(x3) + s(x5) + s(log(x6 + 3)) + s(log(x7 + 3)) + x8, 
+    family = "binomial", 
+    data = train_df, 
+    method = "REML"
+  )
+  predict_probs <- predict(logistic_gam, newdata = test_df, type = "response")
+  pred <- ifelse(predict_probs >=.5, 1, 0)
+  cv_stats[cv_stats$model == "LogisticGAM", "accuracy"][i] <- accuracy(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogisticGAM", "fpr"][i] <- fpr(pred, test_df$y_bin)
+  cv_stats[cv_stats$model == "LogisticGAM", "fnr"][i] <- fnr(pred, test_df$y_bin)
+
+  # KNN
+  train_df_onehot <- train_df %>% 
+    mutate(
+      x1 = scale(x1),
+      x2 = scale(x2),
+      x3 = scale(x3),
+      x4 = scale(x4),
+      x5 = scale(x5),
+      x6 = scale(x6),
+      x7 = scale(x7),
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+  test_df_onehot <- test_df  %>% 
+    mutate(
+      x1 = scale(x1),
+      x2 = scale(x2),
+      x3 = scale(x3),
+      x4 = scale(x4),
+      x5 = scale(x5),
+      x6 = scale(x6),
+      x7 = scale(x7),
+      xA = ifelse(x8 == "A", 1, 0),
+      xB = ifelse(x8 == "B", 1, 0),
+      xC = ifelse(x8 == "C", 1, 0),
+      xD = ifelse(x8 == "D", 1, 0)
+      ) %>% 
+    select(-x8)
+
+  pred <- knn(
+    select(train_df_onehot, -y_bin), 
+    select(test_df_onehot, -y_bin), 
+    as.factor(train_df_onehot$y_bin), 
+    k = 5
+  )
+
+  cv_stats[cv_stats$model == "KNN", "accuracy"][i] <- accuracy(pred, test_df_onehot$y_bin)
+  cv_stats[cv_stats$model == "KNN", "fpr"][i] <- fpr(pred, test_df_onehot$y_bin)
+  cv_stats[cv_stats$model == "KNN", "fnr"][i] <- fnr(pred, test_df_onehot$y_bin)
+
+}
+```
+
+<!-- ## Adding the Python Neural Network Results -->
+
+### Neural Networks
+
+Since neural networks can also be used for classification, we applied them here as well. As with the regression neural network, we used a single hidden layer with eight nodes, the Adam optimizer, a batch size of 32, and 50 epochs, all implemented in Python. However, since using the MSE loss function would be nonsensical for classification, we instead used the cross entropy loss function. To this end, with 10-fold cross validation, we achieved a median accuracy of 0.8095, a median false positive rate of 0.1292, and a median false negative rate of 0.375.
+
+```{r}
+nn_cv <- read.csv("src/04-cv/class_nn_cv_results.csv")
+cv_stats <- bind_rows(cv_stats, nn_cv)
+```
+
+### Plotting the 10-Fold Cross Validation Metrics
+
+```{r}
+#| fig-cap: "Accuracy by Model for Each Fold"
+#| fig-width: 6
+#| fig-height: 3
+
+cv_stats %>%
+  ggplot(aes(x = model, y = accuracy, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "Accuracy",
+    title = "Accuracy by Model"
+  )
+```
+
+A higher accuracy is better so the KNN, Log Logistic, and Regularized Logisitic perform the best here. The False Positive Rate and False Negative Rate were also considered in Appendix @fig-fpr and Apendix @fig-fnr respectively. Additionally the plot of accuracy show for each fold can be found in Appendix @fig-accuracy_by_model_and_fold.
+
+## Conclusion
+
+We were given seven numerical predictors labeled $x1$ through $x7$ and one categorical predictor $x8$ for predicting a response variable $y$. Additionally $y$ was transformed into $y\_bin$ by setting $y\_bin$ = 1 if $y\ge70$ and $0$ otherwise. Initial exploratory data analysis revealed that predictors $x3$, $x4$, $x5$, and $x7$ were well correlated with $y$ and $y\_bin$, with $x4$ and $x5$ correlated with each other. We applied six regression models to predict $y$ and six classification models to predict $y\_bin$. Then 10-fold cross validation was used to assess the models. Root Mean Squared Error and Mean Absolute Error was assessed for the regression models and Accuracy, False Positive Rate, and False Negative Rate were used to assess the classification models. For regression the linear models performed best while for classification k-nearest neighbors, regularized logistic, and log logistic models all performed well.
+
+\newpage
+## Apendix
+```{r}
+#| label: fig-pairplot
+#| fig-height: 6
+#| fig-width: 6
+#| fig-cap: "Scatterplots of Continuous Parameters"
+#| fig-pos: "H"
+
+pairs(select(df, -x8))
+```
+
+```{r}
+#| label: fig-y_histogram
+#| fig-height: 3
+#| fig-width: 6
+#| fig-cap: "Histogram of y"
+#| fig-pos: "H"
+
+y_histogram
+``` 
+
+```{r}
+#| label: fig-histogram_of_y_by_x8
+#| fig-height: 3
+#| fig-width: 6
+#| fig-cap: "Histograms of y by x8"
+#| fig-pos: "H"
+
+histogram_of_y_by_x8
+```
+
+```{r}
+#| label: fig-barplot_of_y_by_x8
+#| fig-height: 3
+#| fig-width: 6
+#| fig-cap: "Barplots of binary y by x8"
+#| fig-pos: "H"
+
+df %>%
+  ggplot(aes(x = as.factor(y_bin), fill = x8)) +
+  geom_bar() + 
+  facet_wrap(~x8) +
+  xlab("Binary y") +
+  theme(legend.position = "none")
+``` 
+
+```{r}
+#| label: fig-groupedbarplot
+#| fig-height: 3
+#| fig-width: 6
+#| fig-cap: "Grouped barplot of binary y by x8"
+#| fig-pos: "H"
+
+df %>%
+  ggplot(aes(x = as.factor(y_bin), fill = x8)) +
+  geom_bar(position="dodge") +
+  xlab("Binary y")
+```
+
+```{r}
+#| label: fig-rmsebymodelandfold
+rmsebymodelandfold
+```
+
+```{r}
+#| label: fig-maebymodel
+maebymodel
+```
+
+```{r}
+#| label: fig-A
+#| fig-cap: "Summary of Initial Logistic Model"
+#| out-width: "80%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureA.png")
+```
+
+```{r}
+#| label: fig-B
+#| fig-cap: "Binned y values vs individual predictors"
+#| out-width: "100%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureB.png")
+```
+
+```{r}
+#| label: fig-C
+#| fig-cap: "Summaries of Box-Tidwell Models"
+#| out-width: "100%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureC.png")
+```
+
+```{r}
+#| label: fig-D
+#| fig-cap: "Improved Standard Logistic Regression Model Summarized"
+#| out-width: "80%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureD.png")
+```
+
+```{r}
+#| label: fig-E
+#| fig-cap: "Initial VIF Report"
+#| out-width: "40%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureE.png")
+```
+
+```{r}
+#| label: fig-F
+#| fig-cap: "Improved VIF Report"
+#| out-width: "40%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureF.png")
+```
+
+```{r}
+#| label: fig-G
+#| fig-cap: "Summary of Final Standard Logistic Regression Model"
+#| out-width: "80%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureG.png")
+```
+
+```{r}
+#| label: fig-H
+#| fig-cap: "Logistic GAM Model Summary"
+#| out-width: "100%"
+#| fig-align: "center"
+#| fig-pos: "H"
+knitr::include_graphics("src/00-report/figures/FromTate/figureH.png")
+```
+
+```{r}
+#| label: fig-fpr
+#| fig-cap: "False Positive Rate by Model for Each Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = fpr, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "False Positive Rate",
+    title = "False Positive Rate by Model"
+  )
+```
+
+```{r}
+#| label: fig-fnr
+#| fig-cap: "False Negative Rate by Model for Each Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = fnr, fill = model)) +
+  geom_boxplot(alpha = .8, outlier.shape = NA) +
+  geom_jitter(width = .2) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "False Negative Rate",
+    title = "False Negative Rate by Model"
+  )
+```
+
+```{r}
+#| label: fig-accuracy_by_model_and_fold
+#| fig-cap: "Accuracy by Model and by Fold"
+
+cv_stats %>%
+  ggplot(aes(x = model, y = accuracy, color = as.factor(fold), group = fold)) +
+  geom_line(linewidth = 1) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1)
+  ) +
+  labs(
+    x = "Model",
+    y = "Accuracy",
+    title = "Accuracy by Model and by Fold"
+  )
+```
+
+
+\newpage
+## References
+
+Daniel. (2025). Understanding Generalized Additive Models. RPubs. https://rpubs.com/AfroLogicInsect/GAM 
+
+Leung, K. (2025, March 5). Assumptions of logistic regression, clearly explained. Towards Data Science. https://towardsdatascience.com/assumptions-of-logistic-regression-clearly-explained-44d85a22b290/ 
+
+Leung, K. (2025, March 5). Assumptions of logistic regression, clearly explained. Towards Data Science. <https://towardsdatascience.com/assumptions-of-logistic-regression-clearly-explained-44d85a22b290/>
+
+Jerome H. Friedman, Robert Tibshirani, and Trevor Hastie. (2009). The Elements of Statistical Learning. <https://hastie.su.domains/ElemStatLearn/>
+
+Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., ... & Chintala, S. (2019). Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems, 32.
