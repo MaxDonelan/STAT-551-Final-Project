@@ -186,6 +186,11 @@ Random forest is an extension and improvement upon bagging by using decorrelatio
  Boosting builds off the premise of bagging with its own twist. In bagging the model is built on the single training set, on the other hand boosting is built sequentially. This means that if a tree is made, the next tree will be grown or made using the information of the previous tree. Any other tree made after this point will be grown from the information of all the trees before. Thus, boosting is not using bootstrap sampling. This process allows the model to avoid over fitting by learning slowly. Boosting does this by having three tuning parameters the number of trees, a shrinkage parameter, and the number of splits. In general, this model outperforms a random forest model.
 
 
+## Principal Component Regression (PCR)
+
+Principal component regression works by first performing principal component analysis (PCA) to select a subset of principal components, then by using those principal components as the inputs for a linear regression model. PCA uses the singular value decomposition of the data to create a set of principal components, combinations of the original features, that maximize the variance of the data along that axis. To determine the number of principal components to keep, we use the "onesigma" approach given by the selectNcomp() function, which is based on the standard error of the CV results. Using 10-fold cross validation, we obtained a median RMSE of 9.8002 and a median MAE of 7.5488.
+
+
 ## Neural Networks
 
 Neural networks perform regression by learning the data via a set of nodes separated into input, hidden, and output layers. For our regression network, we use a single layer model with eight hidden nodes and a reLU activation function. Since Python's machine learning implementations are more developed than R, we chose to use PyTorch and Python 3.14.4 to run our neural networks. For training the model, we use the Adam optimizer as it is implemented in PyTorch with a learning rate of 0.01, 50 epochs of training, a batch size of 32 observations, and a MSE loss function. With 10-fold cross validation, we achieved a median RMSE of 10.4429 and a median MAE of 8.4182.
