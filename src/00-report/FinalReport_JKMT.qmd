@@ -41,7 +41,7 @@ Appendix. A brief explanation of the programs used. Supplemental or extended res
 
 # Introduction
 
-The given FP data contains $200$ observations of eight predictors labeld $x1$ through $x8$, and the resulting response parameter $y$. Additional consideration was given to predicting $y\_bin$ which is $1$ if $y$ is greater than or equal to $70$ and $0$ otherwise. $x1$ through $x7$ are continuous while $x8$ is categorical with four groups $A, B, C,$ and $D$. No context surrounding the predictors or response parameters was given. This report is segmented into initial Exploratory Data Analysis, followed by the Regression Models, then the Classification Models, and concludes with some overall observations. All written code can be found in the appendix.
+The given FP data contains $200$ observations of eight predictors labeld $x1$ through $x8$, and the resulting response parameter $y$. Additional consideration was given to predicting $y\_bin$ which is $1$ if $y$ is greater than or equal to $70$ and $0$ otherwise. $x1$ through $x7$ are continuous while $x8$ is categorical with four groups $A, B, C,$ and $D$. No context surrounding the predictors or response parameters was given. This report is segmented into initial Exploratory Data Analysis, followed by the Regression Models, then the Classification Models, and concludes with some overall observations. All code can be found in the following GitHub Repository <https://github.com/MaxDonelan/STAT-551-Final-Project>.
 
 <!-- SETUP: All Libraries -->
 ```{r}
@@ -74,7 +74,7 @@ df <- df %>%
 <!-- ## Continuous $y$ -->
 <!-- ### Correlations -->
 
-The correlations in @fig-corrplot show that $x4$ is strongly positively correlated with $y$ and $y_bin$ while $x5$ is strongly negatively correlated with $y$ and $y\_bin$. However, $x4$ and $x5$ are also strongly negatively correlated with each other. This raises concerns for multicolinearity. The plot also shows that $x3$ and $x4$ are correlated. Other than those mentioned there are a few weak correlations, but most are about zero.
+The correlations in @fig-corrplot show that $x4$ is strongly positively correlated with $y$ and $y\_bin$ while $x5$ is strongly negatively correlated with $y$ and $y\_bin$. However, $x4$ and $x5$ are also strongly negatively correlated with each other. This raises concerns for multicolinearity. The plot also shows that $x3$ and $x4$ are correlated. Other than those mentioned there are a few weak correlations, but surprisingly most are around zero.
 
 ```{r}
 #| label: fig-corrplot
@@ -126,7 +126,7 @@ df %>%
   )
 ``` 
 
-Here we check the distribution of $y$ grouped by $x8$. While each group does not appear as normally distributed as $y$ is overall, there is not any cause for concern here.
+Here we check the distribution of $y$ grouped by $x8$. Each group doesn't appear as normally distributed as $y$ is overall.
 
 ```{r}
 #| fig-height: 3
@@ -174,11 +174,11 @@ df %>%
 
 ## Linear Regression
 
-We fit two basic linear regression models one with all predictors labeled "baseline linear" and another model with only x4, x7, and x8 labeled "small linear". The linear models performed very well in the 10-fold cross validation compared to following regression models. The linear models assume that $y$ is normally distributed which is a reasonable assumption from the EDA plots above.
+We fit two basic linear regression models one with all predictors labeled "baseline linear" and another model with only $x4$, $x7$, and $x8$ labeled "small linear".The linear models assume that $y$ is normally distributed which is a reasonable assumption from the EDA plots above. The linear models performed very well in the 10-fold cross validation compared to following regression models.
 
 ## Random Forest Regression
 
-Random forest is an extension and improvement upon bagging by using decorrelation. Bootstrap aggregation or bagging uses a tree based method and bootstrapping by taking repeated samples from the same training set and taking the average of the models, to make a new model that reduces the variance. The difference between bagging and random forest is that random forest uses, m, a random sample of our predictors from our total predictors p. A majority of the time m is found by evaluating the square root of p. Therefore, when there is a split in the tree, the model is not allowed to consider all the predictors. This is important as it allows other predictors to essentially have a chance, as some of the splits will not consider our strongest predictors. At the end of the models’ processes the average of our resulting trees will have less variability and therefore be a more reliable prediction. Random forest is especially helpful when we have many highly correlated predictors.
+Random forest is an extension and improvement upon bagging by using decorrelation. Bootstrap aggregation or bagging uses a tree based method and bootstrapping by taking repeated samples from the same training set and taking the average of the models, to make a new model that reduces the variance. The difference between bagging and random forest is that random forest uses, $m$, a random sample of our predictors from our total predictors $p$. A majority of the time $m$ is found by evaluating the square root of $p$. Therefore, when there is a split in the tree, the model is not allowed to consider all the predictors. This is important as it allows other predictors to essentially have a chance, as some of the splits will not consider our strongest predictors. At the end of the models’ processes the average of our resulting trees will have less variability and therefore be a more reliable prediction. Random forest is especially helpful when we have many highly correlated predictors.
 
 
 ## Boosted Trees Regression
@@ -313,6 +313,8 @@ cv_stats %>%
     title = "Root Mean Squared Error by Model"
   )
 ```
+
+A smaller RMSE is better so the Baseline Linear and Small Linear models performed the best here.
 
 ```{r}
 #| fig-cap: "RMSE by Model and by Fold"
@@ -653,6 +655,8 @@ cv_stats %>%
   )
 ```
 
+A higher accuracy is better so the KNN, Log Logistic, and Regularized Logisitic perform the best here.
+
 ```{r}
 #| fig-cap: "False Positive Rate by Model for Each Fold"
 
@@ -691,6 +695,8 @@ cv_stats %>%
   )
 ```
 
+This shows that KNN has a larger false positive rate than the other models.
+
 ```{r}
 #| fig-cap: "Accuracy by Model and by Fold"
 
@@ -709,9 +715,11 @@ cv_stats %>%
   )
 ```
 
+This shows that KNN had a significantly smaller false negative rate compared to the other models. The Neural Network model has a high false negative rate which contributes to its fairly low accuracy.
+
 # Conclusion
 
-We were given seven numerical predictors labeled $x1$ through $x7$ and one categorical predictor $x8$ for predicting a response variable $y$. Additionally $y$ was transformed into $y\_bin$ by setting $y\_bin$ = 1 if $y\ge70$ and $0$ otherwise. Initial exploratory data analysis revealed that predictors $x3$, $x4$, $x5$, and $x7$ were well correlated with $y$ and $y\_bin$, with $x4$ and $x5$ correlated with each other. We applied six regression models to predict $y$ and six classification models to predict $y\_bin$. Then 10-fold cross validation was used to assess the models. Root Mean Squared Error and Mean Absolute Error was assessed for the regression models and Accuracy, False Positive Rate, and False Negative Rate. For regression the linear models performed best while for classification k-nearest neighbors, regularized logistic, and log logistic models all performed well.
+We were given seven numerical predictors labeled $x1$ through $x7$ and one categorical predictor $x8$ for predicting a response variable $y$. Additionally $y$ was transformed into $y\_bin$ by setting $y\_bin$ = 1 if $y\ge70$ and $0$ otherwise. Initial exploratory data analysis revealed that predictors $x3$, $x4$, $x5$, and $x7$ were well correlated with $y$ and $y\_bin$, with $x4$ and $x5$ correlated with each other. We applied six regression models to predict $y$ and six classification models to predict $y\_bin$. Then 10-fold cross validation was used to assess the models. Root Mean Squared Error and Mean Absolute Error was assessed for the regression models and Accuracy, False Positive Rate, and False Negative Rate were used to assess the classification models. For regression the linear models performed best while for classification k-nearest neighbors, regularized logistic, and log logistic models all performed well.
 
 \newpage
 # References
